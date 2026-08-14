@@ -19,10 +19,16 @@ const io     = socketio(server, {
 const PORT        = process.env.PORT         || 4000;
 const managerUser = process.env.MANAGER_USER || "admin";
 const managerPass = process.env.MANAGER_PASS || "abbaseenu2025";
-const MONGO_URI   = process.env.MONGO_URI    ||
-  "mongodb+srv://architkumarsncp2123_db_user:abbaseenu@abbaseenudb.5sndjat.mongodb.net/?appName=AbbaSeenudb";
+// SECURITY: the Mongo connection string (with credentials) must live ONLY in
+// the .env file — never hardcoded in source. Example .env entry:
+//   MONGO_URI=mongodb+srv://<user>:<password>@flameflavor.uc6rwro.mongodb.net/?appName=FlameFlavor
+const MONGO_URI = process.env.MONGO_URI;
+if (!MONGO_URI) {
+  console.error("❌ MONGO_URI is missing from .env — server cannot start without it.");
+  process.exit(1);
+}
 
-mongoose.connect(MONGO_URI, { dbName: "AbbaSeenudb" });
+mongoose.connect(MONGO_URI, { dbName: "FlameFlavor" });
 mongoose.connection.on("connected", () => console.log("✅ MongoDB connected"));
 mongoose.connection.on("error",     (e) => console.error("❌ MongoDB error:", e));
 
@@ -65,6 +71,8 @@ function sanitizeTableDraftPayload(body = {}) {
     guestCount:   Math.max(1, Number(body.guestCount || 1)),
     status:       items.length ? "draft" : "available",
     items,
+    extraCharge:  Math.max(0, Number(body.extraCharge || 0)),
+    extraChargeNote: String(body.extraChargeNote || "").trim(),
     total:        calcTotal(items)
   };
 }
@@ -84,6 +92,14 @@ const orderSchema = new mongoose.Schema(
     specialRequest:     String,
     requestTags:        [String],
     items: [{ name: String, variant: String, price: Number, qty: Number }],
+    subtotal:   { type: Number, default: 0 },   // items total before charges/GST
+    extraCharge:{ type: Number, default: 0 },   // delivery / misc charge added by manager or settings
+    extraChargeNote: { type: String, default: "" },
+    gstEnabled: { type: Boolean, default: false },
+    gstPercent: { type: Number, default: 0 },
+    gstAmount:  { type: Number, default: 0 },
+    gstin:      { type: String, default: "" },  // snapshot of GSTIN at order time
+    ledgerApplied: { type: Number, default: 0 }, // advance/dues amount applied to this order
     total:    Number,
     isDraft:  { type: Boolean, default: false },
     source:   { type: String,  default: "" },
@@ -92,7 +108,7 @@ const orderSchema = new mongoose.Schema(
   },
   { strict: false }
 );
-orderSchema.index({ createdAt: 1 }, { expireAfterSeconds: 7776000 });
+orderSchema.index({ createdAt: 1 }, { expireAfterSeconds: 2678400 }); // 31-day retention
 const Order = mongoose.model("Order", orderSchema);
 
 const serviceRequestSchema = new mongoose.Schema({
@@ -102,7 +118,7 @@ const serviceRequestSchema = new mongoose.Schema({
   status:    { type: String, default: "pending" },
   createdAt: { type: Date,   default: Date.now, index: true }
 });
-serviceRequestSchema.index({ createdAt: 1 }, { expireAfterSeconds: 604800 });
+serviceRequestSchema.index({ createdAt: 1 }, { expireAfterSeconds: 2678400 }); // 31-day retention
 const ServiceRequest = mongoose.model("ServiceRequest", serviceRequestSchema);
 
 // ── TableDraft ────────────────────────────────────────────────────────────────
@@ -114,6 +130,9 @@ const tableDraftSchema = new mongoose.Schema({
   status:        { type: String, default: "available" },
   items: [{ name: String, variant: String, price: Number, qty: Number, category: String }],
   total:         { type: Number, default: 0 },
+  extraCharge:      { type: Number, default: 0 },
+  extraChargeNote:  { type: String, default: "" },
+  isCustom:      { type: Boolean, default: false }, // ad-hoc/unorganized table (not one of the fixed tables)
   lastPrintedAt: Date,
   updatedAt:     { type: Date, default: Date.now },
   createdAt:     { type: Date, default: Date.now }
@@ -139,8 +158,65 @@ const pendingDineInSchema = new mongoose.Schema({
   status:         { type: String, default: "pending" },
   createdAt:      { type: Date,   default: Date.now, index: true }
 });
-pendingDineInSchema.index({ createdAt: 1 }, { expireAfterSeconds: 86400 });
+pendingDineInSchema.index({ createdAt: 1 }, { expireAfterSeconds: 86400 }); // pending requests still auto-clear in 24h
 const PendingDineIn = mongoose.model("PendingDineIn", pendingDineInSchema);
+
+// ── Settings (singleton doc — GST & Compliance, delivery/extra charges) ───────
+const settingsSchema = new mongoose.Schema({
+  key:                     { type: String, default: "main", unique: true },
+  gstin:                   { type: String, default: "" },
+  gstEnabled:              { type: Boolean, default: false },
+  gstPercent:              { type: Number, default: 5 },
+  // Delivery / extra charge applied automatically to online takeaway & delivery orders
+  deliveryChargeEnabled:   { type: Boolean, default: false },
+  deliveryCharge:          { type: Number, default: 0 },
+  takeawayChargeEnabled:   { type: Boolean, default: false },
+  takeawayCharge:          { type: Number, default: 0 },
+  updatedAt:               { type: Date, default: Date.now }
+});
+const Settings = mongoose.model("Settings", settingsSchema);
+
+let _settingsCache = null;
+async function getSettings() {
+  if (_settingsCache) return _settingsCache;
+  let s = await Settings.findOne({ key: "main" });
+  if (!s) s = await Settings.create({ key: "main" });
+  _settingsCache = s;
+  return s;
+}
+function invalidateSettingsCache() { _settingsCache = null; }
+
+// ── Customer Ledger (advance payments / dues, keyed by mobile number) ─────────
+const ledgerEntrySchema = new mongoose.Schema({
+  type:   { type: String, default: "adjust" }, // "advance" | "dues" | "adjust" | "applied"
+  amount: { type: Number, default: 0 },         // positive = credit added, negative = debit
+  note:   { type: String, default: "" },
+  createdAt: { type: Date, default: Date.now }
+}, { _id: false });
+
+const customerLedgerSchema = new mongoose.Schema({
+  mobile:      { type: String, required: true, unique: true, index: true },
+  customerName:{ type: String, default: "" },
+  balance:     { type: Number, default: 0 }, // positive = advance credit available, negative = dues owed
+  history:     [ledgerEntrySchema],
+  updatedAt:   { type: Date, default: Date.now }
+});
+const CustomerLedger = mongoose.model("CustomerLedger", customerLedgerSchema);
+
+// GST / total calculation helper — used for both online orders and manager POS
+function computeOrderTotals(items, extraCharge, settings) {
+  const subtotal = calcTotal(items);
+  const ec = Math.max(0, Number(extraCharge || 0));
+  const base = subtotal + ec;
+  const gstEnabled = !!(settings && settings.gstEnabled);
+  const gstPercent = gstEnabled ? Number(settings.gstPercent || 0) : 0;
+  const gstAmount  = gstEnabled ? Math.round(base * (gstPercent / 100) * 100) / 100 : 0;
+  const total = Math.round((base + gstAmount) * 100) / 100;
+  return {
+    subtotal, extraCharge: ec, gstEnabled, gstPercent, gstAmount,
+    gstin: gstEnabled ? (settings.gstin || "") : "", total
+  };
+}
 
 // ─── APP SETUP ────────────────────────────────────────────────────────────────
 let printQueue = [];
@@ -284,6 +360,7 @@ app.post("/api/orders", async (req, res) => {
     const total = calcTotal(normalItems);
 
     // DINE-IN → pending queue only. No Order record created until manager finalizes.
+    // (GST / extra charges for dine-in are applied later at manager finalize time.)
     if (orderType === "dinein") {
       const pending = new PendingDineIn({
         tableNumber:        String(tableNumber || "").trim(),
@@ -311,11 +388,30 @@ app.post("/api/orders", async (req, res) => {
     }
 
     // TAKEAWAY / DELIVERY → create Order immediately
+    // Auto-apply manager-configured delivery/takeaway charge + GST (settings-driven,
+    // since online customers can't be charged extra after placing the order).
+    const settings = await getSettings();
+    let autoExtraCharge = 0;
+    if (orderType === "delivery" && settings.deliveryChargeEnabled) {
+      autoExtraCharge = Number(settings.deliveryCharge || 0);
+    } else if (orderType === "takeaway" && settings.takeawayChargeEnabled) {
+      autoExtraCharge = Number(settings.takeawayCharge || 0);
+    }
+    const totals = computeOrderTotals(normalItems, autoExtraCharge, settings);
+
     const order = new Order({
       orderType, customerName, registrationNumber, mobile,
       tableNumber: tableNumber ? String(tableNumber) : "",
       address: address || "", location: location || null,
-      items: normalItems, total,
+      items: normalItems,
+      subtotal:    totals.subtotal,
+      extraCharge: totals.extraCharge,
+      extraChargeNote: autoExtraCharge ? (orderType === "delivery" ? "Delivery charge" : "Takeaway charge") : "",
+      gstEnabled:  totals.gstEnabled,
+      gstPercent:  totals.gstPercent,
+      gstAmount:   totals.gstAmount,
+      gstin:       totals.gstin,
+      total:       totals.total,
       paymentMethod:   paymentMethod || "COD",
       paymentVerified: false,
       specialRequest:  specialRequest || "",
@@ -375,7 +471,8 @@ app.patch("/api/orders/:id", async (req, res) => {
     const allowed = [
       "customerName", "mobile", "registrationNumber", "address",
       "items", "total", "paymentMethod", "paymentVerified",
-      "specialRequest", "requestTags", "status", "tableNumber"
+      "specialRequest", "requestTags", "status", "tableNumber",
+      "extraCharge", "extraChargeNote"
     ];
 
     const update = {};
@@ -383,15 +480,32 @@ app.patch("/api/orders/:id", async (req, res) => {
       if (req.body[key] !== undefined) update[key] = req.body[key];
     }
 
-    // Recalculate total if items changed
-    if (update.items) {
-      update.items = update.items.map(i => ({
-        name:    String(i?.name    || ""),
-        variant: String(i?.variant || ""),
-        price:   Number(i?.price   || 0),
-        qty:     Number(i?.qty     || 0)
-      })).filter(i => i.name && i.qty > 0);
-      update.total = calcTotal(update.items);
+    // Recalculate total if items or extraCharge changed — GST status/percent is
+    // preserved from the original order (not retroactively toggled by current settings).
+    if (update.items || update.extraCharge !== undefined) {
+      const existing = await Order.findById(req.params.id);
+      if (!existing) return res.status(404).json({ success: false, error: "Not found" });
+
+      const newItems = update.items
+        ? update.items.map(i => ({
+            name:    String(i?.name    || ""),
+            variant: String(i?.variant || ""),
+            price:   Number(i?.price   || 0),
+            qty:     Number(i?.qty     || 0)
+          })).filter(i => i.name && i.qty > 0)
+        : existing.items;
+      if (update.items) update.items = newItems;
+
+      const extraCharge = update.extraCharge !== undefined ? Number(update.extraCharge || 0) : Number(existing.extraCharge || 0);
+      const subtotal = calcTotal(newItems);
+      const base = subtotal + Math.max(0, extraCharge);
+      const gstPercent = Number(existing.gstPercent || 0);
+      const gstAmount = existing.gstEnabled ? Math.round(base * (gstPercent / 100) * 100) / 100 : 0;
+
+      update.subtotal    = subtotal;
+      update.extraCharge = Math.max(0, extraCharge);
+      update.gstAmount   = gstAmount;
+      update.total       = Math.round((base + gstAmount) * 100) / 100;
     }
 
     const order = await Order.findByIdAndUpdate(req.params.id, { $set: update }, { new: true });
@@ -402,6 +516,20 @@ app.patch("/api/orders/:id", async (req, res) => {
   } catch (err) {
     console.error("Edit order error:", err);
     res.status(500).json({ success: false, error: "Could not edit order", detail: err.message });
+  }
+});
+
+// ─── NEW: Delete ALL orders for a customer (by mobile) — must be declared
+// BEFORE the generic "/:id" delete route below so Express doesn't treat
+// "customer" as an :id value.
+app.delete("/api/orders/customer/:mobile", async (req, res) => {
+  try {
+    const mobile = String(req.params.mobile || "").trim();
+    if (!mobile) return res.status(400).json({ success: false, error: "mobile is required" });
+    const result = await Order.deleteMany({ mobile });
+    res.json({ success: true, deletedCount: result.deletedCount || 0 });
+  } catch (err) {
+    res.status(500).json({ success: false, error: "Could not delete customer history" });
   }
 });
 
@@ -574,6 +702,7 @@ app.post("/api/table-orders/save-draft", async (req, res) => {
     if (!p.tableNumber)
       return res.status(400).json({ success: false, error: "tableNumber is required" });
 
+    const isCustom = !/^[1-9]\d*$/.test(p.tableNumber) || !!req.body.isCustom;
     const draft = await TableDraft.findOneAndUpdate(
       { tableNumber: p.tableNumber },
       {
@@ -584,6 +713,9 @@ app.post("/api/table-orders/save-draft", async (req, res) => {
           status:       p.status,
           items:        p.items,
           total:        p.total,
+          extraCharge:      p.extraCharge,
+          extraChargeNote:  p.extraChargeNote,
+          isCustom,
           updatedAt:    new Date()
         },
         $setOnInsert: { createdAt: new Date() }
@@ -621,6 +753,12 @@ app.post("/api/table-orders/finalize", async (req, res) => {
     if (!p.items.length)
       return res.status(400).json({ success: false, error: "No items in draft" });
 
+    const settings = await getSettings();
+    const totals = computeOrderTotals(p.items, p.extraCharge, settings);
+
+    // Apply any ledger credit/dues the manager chose to settle against this bill
+    const ledgerApplied = Number(req.body.ledgerApplied || 0);
+
     const order = new Order({
       orderType:       "dinein",
       customerName:    p.customerName || "",
@@ -630,7 +768,15 @@ app.post("/api/table-orders/finalize", async (req, res) => {
         name: i.name, variant: i.variant || "",
         price: Number(i.price || 0), qty: Number(i.qty || 0)
       })),
-      total:           p.total || calcTotal(p.items),
+      subtotal:        totals.subtotal,
+      extraCharge:      totals.extraCharge,
+      extraChargeNote:  p.extraChargeNote || "",
+      gstEnabled:      totals.gstEnabled,
+      gstPercent:      totals.gstPercent,
+      gstAmount:       totals.gstAmount,
+      gstin:           totals.gstin,
+      ledgerApplied,
+      total:           Math.round((totals.total - ledgerApplied) * 100) / 100,
       paymentMethod:   "PAYLATERDINEIN",
       paymentVerified: false,
       isDraft:         false,
@@ -638,6 +784,18 @@ app.post("/api/table-orders/finalize", async (req, res) => {
       status:          "delivered"
     });
     await order.save();
+
+    if (p.mobile && ledgerApplied) {
+      await CustomerLedger.findOneAndUpdate(
+        { mobile: p.mobile },
+        {
+          $inc: { balance: -ledgerApplied },
+          $push: { history: { type: "applied", amount: -ledgerApplied, note: `Applied to order ${order._id}` } },
+          $set: { customerName: p.customerName || "", updatedAt: new Date() }
+        },
+        { upsert: true }
+      );
+    }
 
     io.emit("newOrder", order);
     printQueue.push(order);
@@ -664,6 +822,73 @@ app.get("/api/table-orders/:tableNumber", async (req, res) => {
   }
 });
 
+// ─── SETTINGS: GST & Compliance, delivery/takeaway charges ────────────────────
+app.get("/api/settings", async (req, res) => {
+  try {
+    const s = await getSettings();
+    res.json({ success: true, settings: s });
+  } catch (err) {
+    res.status(500).json({ success: false, error: "Could not get settings" });
+  }
+});
+
+app.post("/api/settings", async (req, res) => {
+  try {
+    const allowed = [
+      "gstin", "gstEnabled", "gstPercent",
+      "deliveryChargeEnabled", "deliveryCharge",
+      "takeawayChargeEnabled", "takeawayCharge"
+    ];
+    const update = { updatedAt: new Date() };
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) update[key] = req.body[key];
+    }
+    const s = await Settings.findOneAndUpdate(
+      { key: "main" }, { $set: update }, { new: true, upsert: true }
+    );
+    invalidateSettingsCache();
+    io.emit("settingsUpdated", s);
+    res.json({ success: true, settings: s });
+  } catch (err) {
+    res.status(500).json({ success: false, error: "Could not update settings" });
+  }
+});
+
+// ─── CUSTOMER LEDGER: advance payments / dues ──────────────────────────────────
+app.get("/api/ledger/:mobile", async (req, res) => {
+  try {
+    const mobile = String(req.params.mobile || "").trim();
+    if (!mobile) return res.json({ success: true, balance: 0, history: [] });
+    const l = await CustomerLedger.findOne({ mobile });
+    res.json({ success: true, balance: l ? l.balance : 0, history: l ? l.history : [] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: "Could not get ledger" });
+  }
+});
+
+app.post("/api/ledger/adjust", async (req, res) => {
+  try {
+    const mobile = String(req.body?.mobile || "").trim();
+    const amount = Number(req.body?.amount || 0);
+    const note   = String(req.body?.note   || "").trim();
+    const customerName = String(req.body?.customerName || "").trim();
+    if (!mobile || !amount) return res.status(400).json({ success: false, error: "mobile and non-zero amount are required" });
+
+    const l = await CustomerLedger.findOneAndUpdate(
+      { mobile },
+      {
+        $inc: { balance: amount },
+        $push: { history: { type: amount > 0 ? "advance" : "dues", amount, note } },
+        $set:  { customerName: customerName || undefined, updatedAt: new Date() }
+      },
+      { new: true, upsert: true }
+    );
+    res.json({ success: true, balance: l.balance, history: l.history });
+  } catch (err) {
+    res.status(500).json({ success: false, error: "Could not adjust ledger" });
+  }
+});
+
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
 app.get("/api/dashboard/sales", async (req, res) => {
   try {
@@ -685,7 +910,12 @@ app.get("/api/dashboard/sales", async (req, res) => {
       end   = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
     }
     const orders = await Order.find({ createdAt: { $gte: start, $lte: end }, status: { $ne: "deleted" } });
-    res.json({ total: orders.reduce((s, o) => s + (o.total || 0), 0), count: orders.length });
+    res.json({
+      total: orders.reduce((s, o) => s + (o.total || 0), 0),
+      count: orders.length,
+      gstCollected: Math.round(orders.reduce((s, o) => s + (o.gstAmount || 0), 0) * 100) / 100,
+      extraCharges: Math.round(orders.reduce((s, o) => s + (o.extraCharge || 0), 0) * 100) / 100
+    });
   } catch (err) {
     res.status(500).json({ error: "Could not get sales" });
   }
@@ -777,6 +1007,7 @@ function buildKOTText(o) {
   if (o.address)             lines.push(`Address  : ${o.address}`);
   if (o.specialRequest)      lines.push(`Note     : ${o.specialRequest}`);
   if (o.requestTags?.length) lines.push(`Tags     : ${o.requestTags.join(", ")}`);
+  if (o.gstin)                lines.push(`GSTIN    : ${o.gstin}`);
   lines.push(`Payment  : ${o.paymentMethod || "COD"}${o.paymentVerified ? " ✓ PAID" : " (PENDING)"}`);
   lines.push("================================");
   lines.push("           ITEMS");
@@ -785,6 +1016,10 @@ function buildKOTText(o) {
     lines.push(`  ${it.name}${it.variant ? ` (${it.variant})` : ""}\n  Qty: ${it.qty}   @ ₹${it.price} = ₹${it.price * it.qty}`)
   );
   lines.push("================================");
+  if (o.subtotal)             lines.push(`  Subtotal      : ₹${o.subtotal}`);
+  if (o.extraCharge)          lines.push(`  ${o.extraChargeNote || "Extra Charge"} : ₹${o.extraCharge}`);
+  if (o.gstEnabled && o.gstAmount) lines.push(`  GST (${o.gstPercent}%)     : ₹${o.gstAmount}`);
+  if (o.ledgerApplied)        lines.push(`  Balance Applied: -₹${o.ledgerApplied}`);
   lines.push(`  TOTAL : ₹${o.total}`);
   lines.push("================================");
   lines.push("\n\n\n");
