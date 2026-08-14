@@ -1,0 +1,31 @@
+{
+  "Starters": [
+    { "name": "Veg Manchurian", "image": "/vm.jpeg", "available": true, "variants": { "Plate": 90 } },
+    { "name": "Chilli chicken", "image": "/cc.jpeg", "available": true, "variants": { "Plate": 140 } },
+    { "name": "Abba special chicken", "image": "/asc.jpeg", "available": true, "variants": { "Plate": 150 } },
+    { "name": "Chicken lollipop","image": "/cl.jpeg", "available": true, "variants": { "Plate": 140 } },
+    { "name": "Chicken 65", "image": "/c65.jpeg","available": true, "variants": { "Plate": 150 } },
+    { "name": "Dragon chicken", "image": "/dc.jpeg", "available": true, "variants": { "Plate": 150 } },
+    { "name": "Chicken Manchurian", "image": "/cm.jpeg", "available": true, "variants": { "Plate": 140 } }
+  ],
+
+  "Rice": [
+    { "name": "Paneer fried rice", "image": "/pfr.jpeg", "available": true, "variants": { "Plate": 110 } },
+    { "name": "Veg fried rice", "image": "/vfr.jpeg", "available": true, "variants": { "Plate": 70 } },
+    { "name": "Double egg fried rice", "image": "/defr.jpeg", "available": true, "variants": { "Plate": 90 } },
+    { "name": "Abba special chicken rice", "image": "/ascr.jpeg", "available": true, "variants": { "Plate": 120 } },
+    { "name": "Chicken fried rice", "image": "/cfr.jpeg", "available": true, "variants": { "Plate": 110 } },
+    { "name": "Egg fried rice", "image": "/efr.jpeg", "available": true, "variants": { "Plate": 80 } },
+    { "name": "Gobi fried rice", "image": "/gfr.jpeg","available": true, "variants": { "Plate": 90 } }
+  ],
+
+  "Noodles": [
+    { "name": "Double egg noodles", "image": "/den.jpeg", "available": true, "variants": { "Plate": 90 } },
+    { "name": "Abba special chicken noodles","image": "/ascn.jpeg", "available": true, "variants": { "Plate": 120 } },
+    { "name": "Chicken noodles","image": "/cn.jpeg", "available": true, "variants": { "Plate": 110 } },
+    { "name": "Gobi noodles", "image": "/gn.jpeg", "available": true, "variants": { "Plate": 90 } },
+    { "name": "Veg noodles", "image": "/vn.jpeg", "available": true, "variants": { "Plate": 70 } },
+    { "name": "Paneer noodles", "image": "/pn.jpeg", "available": true, "variants": { "Plate": 110 } },
+    { "name": "Egg noodles", "image": "/en.jpeg", "available": true, "variants": { "Plate": 80 } }
+  ]
+}
