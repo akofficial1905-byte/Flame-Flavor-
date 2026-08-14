@@ -1693,7 +1693,10 @@ async function actuallyPlaceOrder(payload, totalAmount, paymentMethodLabel) {
       return true;
     }
     const note = paymentMethodLabel === 'COD' ? 'No change? Pay via UPI: 7054699905@ptaxis' : '';
-    showSuccessAndReset('Your order has been sent to Sip and Bite', note, totalAmount, paymentMethodLabel);
+    // Prefer the server-computed total (reflects GST / delivery-takeaway charges
+    // applied server-side per current manager settings) over the client estimate.
+    const finalTotal = (data.order && typeof data.order.total === 'number') ? data.order.total : totalAmount;
+    showSuccessAndReset('Your order has been sent to Sip and Bite', note, finalTotal, paymentMethodLabel);
     return true;
   } catch(e) { alert('Server error. Please try again.'); return false; }
 }
