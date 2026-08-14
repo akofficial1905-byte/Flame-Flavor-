@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
@@ -115,23 +116,51 @@
     .analytics-content.active{display:block;}
 
     /* ── POS ── */
-    .pos-layout{display:grid;grid-template-columns:190px 1fr 270px;gap:.75rem;flex:1;overflow:hidden;}
+    .pos-layout{display:grid;grid-template-columns:190px 1fr 270px;gap:.75rem;flex:1;overflow:hidden;transition:grid-template-columns .25s ease;}
+    .pos-layout.pos-focus{grid-template-columns:0px 1fr 0px;}
+    .pos-layout.pos-focus .pos-panel.pos-side{display:none;}
     .pos-panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow-y:auto;padding:.75rem;}
     .category-btn{width:100%;padding:.6rem .75rem;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-weight:600;font-size:.8rem;transition:all .15s;text-align:left;margin-bottom:.35rem;}
     .category-btn:hover{border-color:var(--amber);background:var(--surface2);}
     .category-btn.active{background:var(--navy);color:#fff;border-color:var(--navy);}
     .menu-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem;}
+    .pos-layout.pos-focus .menu-grid{grid-template-columns:repeat(4,1fr);gap:.9rem;}
     .menu-card{padding:.7rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .15s;}
+    .pos-layout.pos-focus .menu-card{padding:1.3rem 1rem;aspect-ratio:1/1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;border-radius:12px;}
     .menu-card:hover{border-color:var(--amber);background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06);}
     .menu-card-name{font-weight:600;font-size:.8rem;margin-bottom:.2rem;}
+    .pos-layout.pos-focus .menu-card-name{font-size:.95rem;}
     .menu-card-price{color:var(--amber);font-weight:700;font-size:.85rem;}
     .draft-item{display:flex;justify-content:space-between;align-items:center;padding:.55rem .65rem;background:var(--surface2);border-radius:6px;margin-bottom:.4rem;font-size:.8rem;}
-    .tables-row{display:flex;flex-wrap:wrap;gap:.5rem;padding:.75rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0;}
+    .tables-row{display:flex;flex-wrap:wrap;gap:.5rem;padding:.75rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0;align-items:center;}
     .table-btn{padding:.5rem .9rem;background:#fff;border:2px solid var(--border);border-radius:7px;cursor:pointer;text-align:center;transition:all .15s;min-width:80px;}
     .table-btn:hover{border-color:var(--amber);}
     .table-btn.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+    .table-btn.custom-table{border-style:dashed;}
     .table-btn .tn{font-size:1rem;font-weight:700;}
     .table-btn .ts{font-size:.65rem;opacity:.8;}
+
+    /* ── HAMBURGER / POS SIDE PANEL ── */
+    .hamburger-btn{width:38px;height:34px;border-radius:7px;border:1.5px solid var(--border);background:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;flex-shrink:0;}
+    .hamburger-btn span{display:block;width:18px;height:2px;background:var(--navy);border-radius:2px;}
+    .hamburger-btn:hover{border-color:var(--amber);}
+    #posSidePanel{display:none;position:fixed;top:0;right:0;bottom:0;width:340px;max-width:92vw;background:#fff;box-shadow:-6px 0 30px rgba(0,0,0,.18);z-index:900;flex-direction:column;overflow:hidden;}
+    #posSidePanel.open{display:flex;}
+    #posSidePanelOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:899;}
+    #posSidePanelOverlay.open{display:block;}
+    .side-panel-header{padding:1rem 1.1rem;background:linear-gradient(135deg,var(--navy),var(--navy2));display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+    .side-panel-header b{color:#fff;font-size:1rem;}
+    .side-panel-close{background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:.9rem;}
+    .side-panel-body{flex:1;overflow-y:auto;padding:1rem 1.1rem;}
+    .side-section{border:1px solid var(--border);border-radius:8px;padding:.9rem;margin-bottom:1rem;background:var(--surface2);}
+    .side-section-title{font-weight:700;font-size:.85rem;margin-bottom:.6rem;color:var(--navy);display:flex;align-items:center;gap:.4rem;}
+    .toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;}
+    .switch{position:relative;width:42px;height:24px;flex-shrink:0;}
+    .switch input{opacity:0;width:0;height:0;}
+    .switch-slider{position:absolute;cursor:pointer;inset:0;background:#CBD5E1;border-radius:999px;transition:.2s;}
+    .switch-slider::before{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;}
+    .switch input:checked + .switch-slider{background:var(--green);}
+    .switch input:checked + .switch-slider::before{transform:translateX(18px);}
 
     /* ── MODALS ── */
     .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;}
@@ -159,6 +188,11 @@
 
     /* ── PRINT PREVIEW ── */
     .receipt-pre{font-family:'Courier New',monospace;font-size:12px;background:#f9f9f9;border:1px solid var(--border);border-radius:6px;padding:1rem;white-space:pre-wrap;max-height:400px;overflow-y:auto;}
+
+    /* ── LEDGER BADGE ── */
+    .ledger-badge{font-size:.72rem;font-weight:700;padding:.3rem .6rem;border-radius:6px;margin-bottom:.5rem;display:inline-block;}
+    .ledger-credit{background:#D1FAE5;color:#065F46;}
+    .ledger-dues{background:#FEE2E2;color:#991B1B;}
   </style>
 </head>
 <body>
@@ -259,6 +293,8 @@
             <div class="kpi-card"><div class="kpi-label">Peak Hour</div><div class="kpi-value" id="kpi-peak" style="font-size:1.1rem;">--</div><div class="kpi-sub">Busiest time</div></div>
             <div class="kpi-card"><div class="kpi-label">Dine-In</div><div class="kpi-value" id="kpi-dinein">0</div><div class="kpi-sub">Table orders</div></div>
             <div class="kpi-card"><div class="kpi-label">Takeaway</div><div class="kpi-value" id="kpi-takeaway">0</div><div class="kpi-sub">To go</div></div>
+            <div class="kpi-card"><div class="kpi-label">GST Collected</div><div class="kpi-value" id="kpi-gst">₹0</div><div class="kpi-sub">This period</div></div>
+            <div class="kpi-card"><div class="kpi-label">Extra Charges</div><div class="kpi-value" id="kpi-extra">₹0</div><div class="kpi-sub">Delivery/misc</div></div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.75rem;margin-bottom:1rem;">
             <div class="card"><div style="font-size:.8rem;font-weight:700;margin-bottom:.5rem;">By Order Type</div><div class="chart-wrap"><canvas id="orderTypeChart"></canvas></div></div>
@@ -278,6 +314,7 @@
         <div class="analytics-layout">
           <div class="analytics-sidebar">
             <div class="analytics-item active" onclick="switchAnalytics('summary',this)">Summary Report</div>
+            <div class="analytics-item" onclick="switchAnalytics('daily',this)">Daily Sales + GST</div>
             <div class="analytics-item" onclick="switchAnalytics('items',this)">Items Analysis</div>
             <div class="analytics-item" onclick="switchAnalytics('categories',this)">Category Sales</div>
             <div class="analytics-item" onclick="switchAnalytics('customers',this)">Customer Insights</div>
@@ -295,9 +332,23 @@
                 <div class="form-group" style="margin:0;"><label class="form-label">From</label><input id="summaryFrom" type="date" class="form-input" style="width:150px;"/></div>
                 <div class="form-group" style="margin:0;"><label class="form-label">To</label><input id="summaryTo" type="date" class="form-input" style="width:150px;"/></div>
                 <button class="btn btn-primary btn-sm" onclick="generateSummaryReport()">Generate</button>
+                <button class="btn btn-success btn-sm" onclick="exportSummaryExcel()">⬇ Export Excel</button>
               </div>
               <div class="kpi-grid" id="summaryKpis" style="display:none;"></div>
               <div class="tbl-wrap"><table><thead><tr><th>Metric</th><th>Value</th><th>Detail</th></tr></thead><tbody id="summaryBody"><tr><td colspan="3" style="text-align:center;color:var(--muted);padding:2rem;">Select dates and generate</td></tr></tbody></table></div>
+            </div>
+
+            <!-- Daily Sales + GST -->
+            <div id="dailyAnalytics" class="analytics-content">
+              <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:1rem;">Daily Sales Report (with GST)</h2>
+              <div style="display:flex;gap:.75rem;align-items:flex-end;margin-bottom:1rem;flex-wrap:wrap;">
+                <div class="form-group" style="margin:0;"><label class="form-label">From</label><input id="dailyFrom" type="date" class="form-input" style="width:150px;"/></div>
+                <div class="form-group" style="margin:0;"><label class="form-label">To</label><input id="dailyTo" type="date" class="form-input" style="width:150px;"/></div>
+                <button class="btn btn-primary btn-sm" onclick="generateDailyReport()">Generate</button>
+                <button class="btn btn-success btn-sm" onclick="exportDailyExcel()">⬇ Export Excel</button>
+                <button class="btn btn-info btn-sm" onclick="exportOrderWiseExcel()">⬇ Export Order-Wise</button>
+              </div>
+              <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Orders</th><th>Subtotal</th><th>Extra Charges</th><th>GST Collected</th><th>Total Revenue</th></tr></thead><tbody id="dailyBody"><tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem;">Select dates and generate</td></tr></tbody></table></div>
             </div>
 
             <!-- Items -->
@@ -307,6 +358,7 @@
                 <div class="form-group" style="margin:0;"><label class="form-label">From</label><input id="itemsFrom" type="date" class="form-input" style="width:150px;"/></div>
                 <div class="form-group" style="margin:0;"><label class="form-label">To</label><input id="itemsTo" type="date" class="form-input" style="width:150px;"/></div>
                 <button class="btn btn-primary btn-sm" onclick="generateItemsAnalytics()">Generate</button>
+                <button class="btn btn-success btn-sm" onclick="exportItemsExcel()">⬇ Export Excel</button>
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
                 <div class="tbl-wrap" style="max-height:400px;overflow-y:auto;"><table><thead><tr><th>#</th><th>Item</th><th>Qty</th><th>Revenue</th><th>%</th></tr></thead><tbody id="itemsBody"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1.5rem;">No data</td></tr></tbody></table></div>
@@ -402,7 +454,9 @@
       <!-- ═══════════ TABLES / POS ═══════════ -->
       <div id="tablesTab" class="tab-content">
         <!-- Table selector row -->
-        <div class="tables-row" id="tablesList"></div>
+        <div class="tables-row" id="tablesList">
+          <button class="hamburger-btn" id="posHamburgerBtn" title="More options" type="button"><span></span><span></span><span></span></button>
+        </div>
 
         <!-- Pending dine-in -->
         <div id="pendingSection" style="display:none;flex-shrink:0;padding:.5rem 1.25rem;border-bottom:1px solid var(--border);background:#FFFBEB;">
@@ -411,9 +465,9 @@
         </div>
 
         <!-- POS area -->
-        <div class="pos-layout" style="padding:.75rem 1.25rem;flex:1;overflow:hidden;">
+        <div class="pos-layout" id="posLayout" style="padding:.75rem 1.25rem;flex:1;overflow:hidden;">
           <!-- Categories -->
-          <div class="pos-panel" style="display:flex;flex-direction:column;gap:.35rem;">
+          <div class="pos-panel pos-side" style="display:flex;flex-direction:column;gap:.35rem;">
             <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;margin-bottom:.4rem;">Categories</div>
             <div id="categoriesList"></div>
             <input id="tableMenuSearch" type="text" class="form-input" style="font-size:.78rem;margin-top:.5rem;" placeholder="Search items…" oninput="renderTableMenuList()"/>
@@ -426,8 +480,10 @@
           </div>
 
           <!-- Draft bill -->
-          <div class="pos-panel" style="display:flex;flex-direction:column;">
+          <div class="pos-panel pos-side" style="display:flex;flex-direction:column;">
             <div style="font-size:1.1rem;font-weight:700;margin-bottom:.6rem;" id="selectedTableTitle">Table 1</div>
+
+            <div id="tableLedgerBadge"></div>
 
             <!-- Customer autocomplete -->
             <div class="form-group autocomplete-wrap" style="margin-bottom:.5rem;">
@@ -437,7 +493,7 @@
             </div>
             <div class="form-group autocomplete-wrap" style="margin-bottom:.5rem;">
               <label class="form-label">Mobile</label>
-              <input id="tableCustomerMobile" type="text" id2="tableMobileField" class="form-input" placeholder="Phone" oninput="handleCustomerAutoComplete(this,'tableCustomerName','tableCustomerMobile')" autocomplete="off"/>
+              <input id="tableCustomerMobile" type="text" id2="tableMobileField" class="form-input" placeholder="Phone" oninput="handleCustomerAutoComplete(this,'tableCustomerName','tableCustomerMobile'); loadTableLedger();" autocomplete="off"/>
               <div class="autocomplete-list" id="mobileAcList"></div>
             </div>
             <div class="form-group" style="margin-bottom:.6rem;">
@@ -447,6 +503,11 @@
 
             <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;margin-bottom:.4rem;">Items</div>
             <div id="tableDraftItems" style="flex:1;overflow-y:auto;min-height:80px;max-height:220px;margin-bottom:.6rem;"></div>
+
+            <div class="form-group" style="margin-bottom:.5rem;">
+              <label class="form-label">Extra Charge (delivery/misc)</label>
+              <input id="tableExtraCharge" type="number" class="form-input" min="0" value="0" oninput="onTableExtraChargeInput()"/>
+            </div>
 
             <div style="background:var(--surface2);padding:.75rem;border-radius:7px;text-align:right;margin-bottom:.7rem;">
               <div style="font-size:.7rem;color:var(--muted);">Total</div>
@@ -475,6 +536,7 @@
             </div>
             <button class="btn btn-primary" onclick="performLookup()">Search</button>
             <button class="btn btn-secondary btn-sm" onclick="document.getElementById('lookupInput').value='';document.getElementById('lookupResults').innerHTML='<div style=color:var(--muted);text-align:center;padding:2rem;>Search results will appear here</div>'">Clear</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteCustomerHistory()">🗑 Delete Customer History</button>
           </div>
         </div>
         <div id="lookupResults" style="flex:1;overflow-y:auto;padding:1rem 1.25rem;color:var(--muted);text-align:center;padding-top:2rem;">Search results will appear here</div>
@@ -500,6 +562,69 @@
   </div><!-- /shell -->
 </div><!-- /app -->
 
+<!-- ═══════════════ POS SIDE PANEL (hamburger) ═══════════════ -->
+<div id="posSidePanelOverlay"></div>
+<div id="posSidePanel">
+  <div class="side-panel-header">
+    <b>⚙️ More Options</b>
+    <button class="side-panel-close" id="posSidePanelCloseBtn">✕</button>
+  </div>
+  <div class="side-panel-body">
+
+    <div class="side-section">
+      <div class="side-section-title">🧾 GST & Compliance</div>
+      <div class="toggle-row">
+        <span style="font-size:.82rem;font-weight:600;">Collect GST</span>
+        <label class="switch"><input type="checkbox" id="gstEnabledToggle" onchange="saveSettings()"><span class="switch-slider"></span></label>
+      </div>
+      <div class="form-group">
+        <label class="form-label">GSTIN (printed on bill when GST is ON)</label>
+        <input id="gstinInput" type="text" class="form-input" placeholder="e.g. 22AAAAA0000A1Z5" onchange="saveSettings()"/>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">GST %</label>
+        <input id="gstPercentInput" type="number" class="form-input" min="0" step="0.1" value="5" onchange="saveSettings()"/>
+      </div>
+    </div>
+
+    <div class="side-section">
+      <div class="side-section-title">🚴 Delivery Charge (auto-applied to online delivery orders)</div>
+      <div class="toggle-row">
+        <span style="font-size:.82rem;font-weight:600;">Charge Delivery Fee</span>
+        <label class="switch"><input type="checkbox" id="deliveryChargeEnabledToggle" onchange="saveSettings()"><span class="switch-slider"></span></label>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">Delivery Charge (₹)</label>
+        <input id="deliveryChargeInput" type="number" class="form-input" min="0" value="0" onchange="saveSettings()"/>
+      </div>
+    </div>
+
+    <div class="side-section">
+      <div class="side-section-title">🥡 Takeaway Charge (auto-applied to online takeaway orders)</div>
+      <div class="toggle-row">
+        <span style="font-size:.82rem;font-weight:600;">Charge Takeaway Fee</span>
+        <label class="switch"><input type="checkbox" id="takeawayChargeEnabledToggle" onchange="saveSettings()"><span class="switch-slider"></span></label>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">Takeaway Charge (₹)</label>
+        <input id="takeawayChargeInput" type="number" class="form-input" min="0" value="0" onchange="saveSettings()"/>
+      </div>
+      <p style="font-size:.7rem;color:var(--muted);margin-top:.5rem;">Already-placed takeaway/delivery orders can still be adjusted individually from Orders → Edit.</p>
+    </div>
+
+    <div class="side-section">
+      <div class="side-section-title">➕ Add Unorganized / Walk-in Table</div>
+      <div class="form-group">
+        <label class="form-label">Table / Party Name</label>
+        <input id="newCustomTableName" type="text" class="form-input" placeholder="e.g. Walk-in 1, Garden seating"/>
+      </div>
+      <button class="btn btn-primary btn-sm" style="width:100%;" onclick="createCustomTable()">Create Table</button>
+      <p style="font-size:.7rem;color:var(--muted);margin-top:.5rem;">Unlimited custom tables can be created for walk-in customers. They save as drafts and clear automatically once printed/finalized.</p>
+    </div>
+
+  </div>
+</div>
+
 <!-- ═══════════════ MODALS ═══════════════ -->
 
 <!-- Print Modal -->
@@ -507,9 +632,12 @@
   <div class="modal-box" style="width:500px;">
     <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:1rem;">Print Options</h2>
     <div id="printPreview" class="receipt-pre" style="margin-bottom:1rem;"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem;">
       <button class="btn btn-primary" onclick="doPrintReceipt()">🖨 Print Receipt</button>
       <button class="btn btn-warning" onclick="doPrintKOT()">🎫 Print KOT</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr;gap:.75rem;margin-bottom:1rem;">
+      <button class="btn btn-success" onclick="sendBillWhatsapp()">💬 Send Bill via WhatsApp</button>
     </div>
     <button class="btn btn-secondary" style="width:100%;" onclick="closeModal('printModal')">Close</button>
   </div>
@@ -543,6 +671,30 @@
   </div>
 </div>
 
+<!-- Ledger Adjust Modal -->
+<div id="ledgerModal" class="modal">
+  <div class="modal-box" style="max-width:380px;">
+    <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:.25rem;">Customer Advance / Dues</h2>
+    <p style="font-size:.78rem;color:var(--muted);margin-bottom:1rem;" id="ledgerCustomerLabel"></p>
+    <div id="ledgerCurrentBalance" style="margin-bottom:1rem;"></div>
+    <div class="form-group">
+      <label class="form-label">Amount (₹) — positive = customer paid extra (advance), negative = customer owes (dues)</label>
+      <input id="ledgerAmountInput" type="number" class="form-input" step="1"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Note</label>
+      <input id="ledgerNoteInput" type="text" class="form-input" placeholder="Optional note"/>
+    </div>
+    <div style="display:flex;gap:.75rem;margin-top:.5rem;">
+      <button class="btn btn-success" style="flex:1;" onclick="submitLedgerAdjust()">Save</button>
+      <button class="btn btn-secondary" style="flex:1;" onclick="closeModal('ledgerModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Audio for new-order alerts -->
+<audio id="orderAlertAudio" preload="auto"></audio>
+
 <script>
 'use strict';
 // ─────────────────────────────── STATE ───────────────────────────────
@@ -552,13 +704,17 @@ let tableMenuFlat = [];
 let selectedTable = 1;
 let selectedCategory = null;
 let currentPrintOrderId = null;
+let currentPrintOrder = null;
 let analyticsCharts = {};
 const TABLECOUNT = 5;
 
 const tableOrders = {};
 for (let i = 1; i <= TABLECOUNT; i++) {
-  tableOrders[i] = { tableNumber: String(i), customerName:'', mobile:'', guestCount:1, items:[] };
+  tableOrders[i] = { tableNumber: String(i), customerName:'', mobile:'', guestCount:1, items:[], extraCharge:0 };
 }
+let customTableIds = []; // list of custom/unorganized table identifiers (strings)
+let currentLedgerBalance = 0;
+let appSettings = { gstEnabled:false, gstin:'', gstPercent:5, deliveryChargeEnabled:false, deliveryCharge:0, takeawayChargeEnabled:false, takeawayCharge:0 };
 
 let serviceRequests = [];
 
@@ -593,12 +749,55 @@ function initSocket() {
   if (socket) return;
   try {
     socket = io();
-    socket.on('newOrder', () => fetchOrders());
+    socket.on('newOrder', () => { fetchOrders(); triggerNewOrderAlert(); });
     socket.on('orderUpdated', () => fetchOrders());
     socket.on('serviceRequest', req => { serviceRequests.unshift(req); renderServiceRequests(); });
-    socket.on('tableDraftUpdated', payload => { if (payload?.tableNumber) { tableOrders[+payload.tableNumber] = { ...payload, items: payload.items || [] }; renderTablesList(); if (+payload.tableNumber === selectedTable) renderTableDraft(); } });
-    socket.on('pendingDineIn', () => loadPendingDineIn());
+    socket.on('tableDraftUpdated', payload => {
+      if (!payload?.tableNumber) return;
+      const key = /^[1-9]\d*$/.test(payload.tableNumber) && !payload.isCustom ? +payload.tableNumber : payload.tableNumber;
+      tableOrders[key] = { ...payload, items: payload.items || [] };
+      if (payload.isCustom && !customTableIds.includes(payload.tableNumber)) customTableIds.push(payload.tableNumber);
+      renderTablesList();
+      if (String(selectedTable) === String(key)) renderTableDraft();
+    });
+    socket.on('tableDraftCleared', payload => {
+      if (!payload?.tableNumber) return;
+      customTableIds = customTableIds.filter(id => id !== payload.tableNumber);
+      renderTablesList();
+    });
+    socket.on('pendingDineIn', () => { loadPendingDineIn(); triggerNewOrderAlert(); });
   } catch(e) { console.warn('Socket unavailable', e); }
+}
+
+// ─────────────────────────────── NEW ORDER SOUND ALERT (10s/20s escalation) ──
+let pendingAlertTimers = [];
+function triggerNewOrderAlert() {
+  playAlertBeep(1);
+  clearAlertTimers();
+  pendingAlertTimers.push(setTimeout(() => playAlertBeep(2), 10000));
+  pendingAlertTimers.push(setTimeout(() => playAlertBeep(3), 20000));
+}
+function clearAlertTimers() {
+  pendingAlertTimers.forEach(t => clearTimeout(t));
+  pendingAlertTimers = [];
+}
+function playAlertBeep(intensity) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const beeps = intensity === 1 ? 1 : intensity === 2 ? 2 : 3;
+    for (let i = 0; i < beeps; i++) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = intensity === 3 ? 1100 : 880;
+      gain.gain.setValueAtTime(0.001, ctx.currentTime);
+      const start = ctx.currentTime + i * 0.28;
+      gain.gain.exponentialRampToValueAtTime(0.25, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.22);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(start); osc.stop(start + 0.25);
+    }
+  } catch(e) { /* audio not available */ }
 }
 
 // ─────────────────────────────── LOGIN ───────────────────────────────
@@ -640,6 +839,7 @@ async function initManager() {
   document.getElementById('dashboardDate').value = today();
   await loadInventory();
   await loadMenuForTables();
+  await loadSettings();
   await loadAllTableDrafts();
   renderTablesList();
   selectTable(1);
@@ -647,6 +847,7 @@ async function initManager() {
   await fetchOrders();
   await renderDashboard();
   await loadPendingDineIn();
+  wirePosSidePanel();
 }
 
 // ─────────────────────────────── TABS ────────────────────────────────
@@ -667,6 +868,59 @@ function switchAnalytics(section, el) {
 // ─────────────────────────────── MODALS ──────────────────────────────
 function openModal(id) { document.getElementById(id).classList.add('active'); }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// ─────────────────────────────── SETTINGS (GST / CHARGES) ────────────
+async function loadSettings() {
+  try {
+    const data = await apiFetch('/api/settings');
+    appSettings = data.settings || appSettings;
+    document.getElementById('gstEnabledToggle').checked = !!appSettings.gstEnabled;
+    document.getElementById('gstinInput').value = appSettings.gstin || '';
+    document.getElementById('gstPercentInput').value = appSettings.gstPercent != null ? appSettings.gstPercent : 5;
+    document.getElementById('deliveryChargeEnabledToggle').checked = !!appSettings.deliveryChargeEnabled;
+    document.getElementById('deliveryChargeInput').value = appSettings.deliveryCharge || 0;
+    document.getElementById('takeawayChargeEnabledToggle').checked = !!appSettings.takeawayChargeEnabled;
+    document.getElementById('takeawayChargeInput').value = appSettings.takeawayCharge || 0;
+  } catch(e) { console.warn('loadSettings', e); }
+}
+
+async function saveSettings() {
+  const payload = {
+    gstEnabled: document.getElementById('gstEnabledToggle').checked,
+    gstin: document.getElementById('gstinInput').value.trim(),
+    gstPercent: +document.getElementById('gstPercentInput').value || 0,
+    deliveryChargeEnabled: document.getElementById('deliveryChargeEnabledToggle').checked,
+    deliveryCharge: +document.getElementById('deliveryChargeInput').value || 0,
+    takeawayChargeEnabled: document.getElementById('takeawayChargeEnabledToggle').checked,
+    takeawayCharge: +document.getElementById('takeawayChargeInput').value || 0
+  };
+  try {
+    const data = await apiFetch('/api/settings', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    appSettings = data.settings || appSettings;
+  } catch(e) { console.warn('saveSettings', e); }
+}
+
+// ─────────────────────────────── POS SIDE PANEL (hamburger) ──────────
+function wirePosSidePanel() {
+  const btn = document.getElementById('posHamburgerBtn');
+  const panel = document.getElementById('posSidePanel');
+  const overlay = document.getElementById('posSidePanelOverlay');
+  const closeBtn = document.getElementById('posSidePanelCloseBtn');
+  const posLayout = document.getElementById('posLayout');
+  if (!btn) return;
+  btn.onclick = () => {
+    panel.classList.add('open');
+    overlay.classList.add('open');
+    posLayout.classList.add('pos-focus');
+  };
+  const closeSidePanel = () => {
+    panel.classList.remove('open');
+    overlay.classList.remove('open');
+    posLayout.classList.remove('pos-focus');
+  };
+  closeBtn.onclick = closeSidePanel;
+  overlay.onclick = closeSidePanel;
+}
 
 // ─────────────────────────────── ORDERS ──────────────────────────────
 async function fetchOrders() {
@@ -700,6 +954,7 @@ function buildOrderCard(o) {
         <span class="badge badge-gray">${esc(o.orderType||'')}</span>
         <span class="badge ${isDelivered?'badge-success':'badge-warning'}">${esc(o.status||'')}</span>
         ${o.paymentVerified?'<span class="badge badge-success">PAID</span>':''}
+        ${o.gstEnabled?'<span class="badge badge-info">GST</span>':''}
       </div>
       <span style="font-size:.7rem;color:var(--muted);">${fmtTime(o.createdAt)} · ${fmtDate(o.createdAt)}</span>
     </div>
@@ -711,6 +966,7 @@ function buildOrderCard(o) {
       <button class="btn btn-xs btn-primary" onclick="openPrint('${o._id}')">Print</button>
       <button class="btn btn-xs btn-secondary" onclick="openEditOrder('${o._id}')">Edit</button>
       ${!isDelivered?`<button class="btn btn-xs btn-success" onclick="markDelivered('${o._id}')">✔ Delivered</button>`:''}
+      <button class="btn btn-xs btn-danger" onclick="deleteOrder('${o._id}')">🗑 Delete</button>
       <select class="form-select" style="width:auto;font-size:.72rem;padding:.2rem .5rem;" onchange="updateStatus('${o._id}',this.value)">
         <option value="">Change status…</option>
         <option value="incoming">Incoming</option>
@@ -731,6 +987,29 @@ async function updateStatus(id, status) {
   if (!status) return;
   await apiFetch(`/api/orders/${id}/status`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status}) });
   fetchOrders();
+}
+
+// ─────────────────────────────── DELETE ORDER / CUSTOMER HISTORY ─────
+async function deleteOrder(id) {
+  if (!confirm('Delete this order permanently? This cannot be undone.')) return;
+  try {
+    await apiFetch(`/api/orders/${id}`, { method:'DELETE' });
+    fetchOrders();
+    performLookup();
+  } catch(e) { alert('Could not delete order: '+e.message); }
+}
+
+async function deleteCustomerHistory() {
+  const q = document.getElementById('lookupInput').value.trim();
+  if (!q) { alert('Search for a customer (by mobile number) first.'); return; }
+  if (!/^\d{6,15}$/.test(q)) { alert('Enter the exact mobile number in the search box to delete a customer\'s full history.'); return; }
+  if (!confirm(`Delete ALL order history for mobile ${q}? This is permanent and removes it from the database.`)) return;
+  try {
+    const data = await apiFetch(`/api/orders/customer/${encodeURIComponent(q)}`, { method:'DELETE' });
+    alert(`Deleted ${data.deletedCount||0} order(s) for this customer.`);
+    performLookup();
+    fetchOrders();
+  } catch(e) { alert('Could not delete customer history: '+e.message); }
 }
 
 // ─────────────────────────────── SERVICE REQUESTS ────────────────────
@@ -760,6 +1039,7 @@ function renderServiceRequests() {
 async function openPrint(orderId) {
   currentPrintOrderId = orderId;
   const o = await apiFetch(`/api/orders/${orderId}`);
+  currentPrintOrder = o;
   document.getElementById('printPreview').textContent = buildReceiptText(o);
   openModal('printModal');
 }
@@ -775,16 +1055,21 @@ function buildReceiptText(o) {
     `Customer : ${o.customerName||'N/A'}`,
     `Mobile   : ${o.mobile||'N/A'}`,
     o.tableNumber ? `Table    : ${o.tableNumber}` : '',
+    o.gstin ? `GSTIN    : ${o.gstin}` : '',
     `Payment  : ${o.paymentMethod||'COD'}${o.paymentVerified?' ✓ PAID':' (PENDING)'}`,
     '--------------------------------',
     '           ITEMS',
     '--------------------------------',
     ...(o.items||[]).map(i=>`  ${i.name}${i.variant?' ('+i.variant+')':''} x${i.qty} = ₹${i.price*i.qty}`),
     '================================',
+    o.subtotal ? `  Subtotal       : ₹${o.subtotal}` : '',
+    o.extraCharge ? `  ${o.extraChargeNote||'Extra Charge'} : ₹${o.extraCharge}` : '',
+    (o.gstEnabled && o.gstAmount) ? `  GST (${o.gstPercent}%)      : ₹${o.gstAmount}` : '',
+    o.ledgerApplied ? `  Balance Applied : -₹${o.ledgerApplied}` : '',
     `  TOTAL : ₹${o.total}`,
     '================================'
   ];
-  return lines.filter(l=>l!==null&&l!==undefined).join('\n');
+  return lines.filter(l=>l!==null&&l!==undefined&&l!=='').join('\n');
 }
 
 function doPrintReceipt() {
@@ -805,6 +1090,18 @@ async function doPrintKOT() {
   } catch(e) { alert('KOT error: '+e.message); }
 }
 
+// ─────────────────────────────── SEND BILL VIA WHATSAPP ──────────────
+function sendBillWhatsapp() {
+  if (!currentPrintOrder) { alert('Open a print preview first.'); return; }
+  const o = currentPrintOrder;
+  const mobile = String(o.mobile||'').replace(/\D/g,'');
+  if (!mobile) { alert('This order has no mobile number on file.'); return; }
+  const text = buildReceiptText(o);
+  const phone = mobile.length === 10 ? '91'+mobile : mobile;
+  const url = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+  window.open(url, '_blank');
+}
+
 // ─────────────────────────────── EDIT ORDER ──────────────────────────
 async function openEditOrder(orderId) {
   const o = await apiFetch(`/api/orders/${orderId}`);
@@ -814,10 +1111,13 @@ async function openEditOrder(orderId) {
       <div class="form-group" style="margin:0;"><label class="form-label">Customer Name</label><input id="edn" type="text" class="form-input" value="${esc(o.customerName||'')}"/></div>
       <div class="form-group" style="margin:0;"><label class="form-label">Mobile</label><input id="edm" type="text" class="form-input" value="${esc(o.mobile||'')}"/></div>
     </div>
-    <div class="form-group"><label class="form-label">Status</label>
-      <select id="eds" class="form-select">
-        ${['incoming','preparing','ready','delivered'].map(s=>`<option value="${s}"${o.status===s?' selected':''}>${s}</option>`).join('')}
-      </select>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+      <div class="form-group"><label class="form-label">Status</label>
+        <select id="eds" class="form-select">
+          ${['incoming','preparing','ready','delivered'].map(s=>`<option value="${s}"${o.status===s?' selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Extra Charge (₹) — e.g. delivery fee</label><input id="edx" type="number" class="form-input" min="0" value="${o.extraCharge||0}"/></div>
     </div>
     <h4 style="font-weight:700;margin:.75rem 0 .5rem;font-size:.85rem;">Items</h4>
     <div id="editItemsContainer" style="max-height:220px;overflow-y:auto;"></div>`;
@@ -846,9 +1146,10 @@ async function saveEditOrder(orderId, origItems) {
     const price = +document.querySelectorAll('#editItemsContainer [data-field="price"]')[i].value;
     if (qty > 0) items.push({ name: el.value, variant: origItems[i]?.variant||'', price, qty });
   });
+  const extraCharge = +document.getElementById('edx').value || 0;
   await apiFetch(`/api/orders/${orderId}`, {
     method:'PATCH', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ customerName: document.getElementById('edn').value, mobile: document.getElementById('edm').value, status: document.getElementById('eds').value, items })
+    body: JSON.stringify({ customerName: document.getElementById('edn').value, mobile: document.getElementById('edm').value, status: document.getElementById('eds').value, items, extraCharge })
   });
   closeModal('editOrderModal');
   fetchOrders();
@@ -867,6 +1168,8 @@ async function renderDashboard() {
     document.getElementById('kpi-revenue').textContent = fmtRs(stats.total||0);
     document.getElementById('kpi-orders').textContent = stats.count||0;
     document.getElementById('kpi-avg').textContent = stats.count ? fmtRs(Math.round(stats.total/stats.count)) : '₹0';
+    document.getElementById('kpi-gst').textContent = fmtRs(stats.gstCollected||0);
+    document.getElementById('kpi-extra').textContent = fmtRs(stats.extraCharges||0);
 
     try {
       const ph = await apiFetch(`/api/dashboard/peakhour?date=${date}`);
@@ -886,6 +1189,7 @@ async function renderDashboard() {
       else insights.push('📈 Sales ongoing. Push promotions for peak hours.');
       insights.push(`Avg order: ${fmtRs(Math.round(stats.total/(stats.count||1)))}`);
       insights.push(`Dine-In: ${dinein} · Takeaway: ${takeaway} · Delivery: ${orders.filter(o=>o.orderType==='delivery').length}`);
+      if (stats.gstCollected) insights.push(`GST collected: ${fmtRs(stats.gstCollected)}`);
     }
     document.getElementById('dashboardInsights').innerHTML = insights.map(i=>`<div style="padding:.3rem 0;">• ${i}</div>`).join('');
 
@@ -936,6 +1240,7 @@ async function getOrdersRange(fromDate, toDate) {
   return allOrders;
 }
 
+let _lastSummary = { rows: [], from:'', to:'' };
 async function generateSummaryReport() {
   const from = document.getElementById('summaryFrom').value || today();
   const to   = document.getElementById('summaryTo').value   || today();
@@ -945,10 +1250,12 @@ async function generateSummaryReport() {
   const items = {};
   orders.forEach(o=>(o.items||[]).forEach(i=>{ items[i.name]=(items[i.name]||0)+(i.qty||0); }));
   const topItem = Object.entries(items).sort((a,b)=>b[1]-a[1])[0];
+  const gstTotal = orders.reduce((s,o)=>s+(o.gstAmount||0),0);
   const rows = [
     ['Total Revenue', fmtRs(total), `${count} orders`],
     ['Total Orders', count, `${from} to ${to}`],
     ['Average Order Value', fmtRs(count?Math.round(total/count):0), 'Per transaction'],
+    ['GST Collected', fmtRs(gstTotal), ''],
     ['Dine-In Orders', orders.filter(o=>o.orderType==='dinein').length, ''],
     ['Takeaway Orders', orders.filter(o=>o.orderType==='takeaway').length, ''],
     ['Delivery Orders', orders.filter(o=>o.orderType==='delivery').length, ''],
@@ -956,9 +1263,66 @@ async function generateSummaryReport() {
     ['Completed Orders', orders.filter(o=>o.status==='delivered').length, ''],
     ['Pending/Active', orders.filter(o=>o.status!=='delivered').length, ''],
   ];
+  _lastSummary = { rows, from, to };
   document.getElementById('summaryBody').innerHTML = rows.map(r=>`<tr><td style="font-weight:600;">${esc(r[0])}</td><td style="color:var(--navy);font-weight:700;">${esc(String(r[1]))}</td><td style="color:var(--muted);font-size:.8rem;">${esc(String(r[2]))}</td></tr>`).join('');
 }
 
+function exportSummaryExcel() {
+  if (!_lastSummary.rows.length) { alert('Generate the report first.'); return; }
+  const ws = XLSX.utils.aoa_to_sheet([['Metric','Value','Detail'], ..._lastSummary.rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Summary');
+  XLSX.writeFile(wb, `summary_${_lastSummary.from}_to_${_lastSummary.to}.xlsx`);
+}
+
+let _lastDaily = { rows: [], from:'', to:'' };
+async function generateDailyReport() {
+  const from = document.getElementById('dailyFrom').value || today();
+  const to   = document.getElementById('dailyTo').value   || today();
+  const fromD = new Date(from), toD = new Date(to);
+  const rows = [];
+  for (let d = new Date(fromD); d <= toD; d.setDate(d.getDate()+1)) {
+    const dateStr = d.toISOString().slice(0,10);
+    const orders = await fetchOrders2Date(dateStr);
+    const subtotal = orders.reduce((s,o)=>s+(o.subtotal||o.total||0),0);
+    const extra = orders.reduce((s,o)=>s+(o.extraCharge||0),0);
+    const gst = orders.reduce((s,o)=>s+(o.gstAmount||0),0);
+    const rev = orders.reduce((s,o)=>s+(o.total||0),0);
+    rows.push([dateStr, orders.length, subtotal, extra, gst, rev]);
+  }
+  _lastDaily = { rows, from, to };
+  document.getElementById('dailyBody').innerHTML = rows.length
+    ? rows.map(r=>`<tr><td style="font-weight:600;">${r[0]}</td><td>${r[1]}</td><td>${fmtRs(r[2])}</td><td>${fmtRs(r[3])}</td><td style="color:var(--amber);font-weight:700;">${fmtRs(r[4])}</td><td style="color:var(--navy);font-weight:700;">${fmtRs(r[5])}</td></tr>`).join('')
+    : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem;">No data</td></tr>';
+}
+
+function exportDailyExcel() {
+  if (!_lastDaily.rows.length) { alert('Generate the report first.'); return; }
+  const ws = XLSX.utils.aoa_to_sheet([['Date','Orders','Subtotal','Extra Charges','GST Collected','Total Revenue'], ..._lastDaily.rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Daily Sales');
+  XLSX.writeFile(wb, `daily_sales_${_lastDaily.from}_to_${_lastDaily.to}.xlsx`);
+}
+
+async function exportOrderWiseExcel() {
+  const from = document.getElementById('dailyFrom').value || today();
+  const to   = document.getElementById('dailyTo').value   || today();
+  const orders = await getOrdersRange(from, to);
+  if (!orders.length) { alert('No orders in this date range.'); return; }
+  const header = ['Order ID','Date','Type','Customer','Mobile','Table','Items','Subtotal','Extra Charge','GST %','GST Amount','Total','Payment Method','Paid','Status'];
+  const rows = orders.map(o => [
+    o._id, fmtDateTime(o.createdAt), o.orderType||'', o.customerName||'', o.mobile||'', o.tableNumber||'',
+    (o.items||[]).map(i=>`${i.name}${i.variant?' ('+i.variant+')':''} x${i.qty}`).join('; '),
+    o.subtotal||0, o.extraCharge||0, o.gstPercent||0, o.gstAmount||0, o.total||0,
+    o.paymentMethod||'', o.paymentVerified?'Yes':'No', o.status||''
+  ]);
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Orders');
+  XLSX.writeFile(wb, `orders_${from}_to_${to}.xlsx`);
+}
+
+let _lastItems = { rows: [], from:'', to:'' };
 async function generateItemsAnalytics() {
   const from = document.getElementById('itemsFrom').value||today();
   const to   = document.getElementById('itemsTo').value||today();
@@ -971,6 +1335,7 @@ async function generateItemsAnalytics() {
   }));
   const sorted = Object.entries(map).sort((a,b)=>b[1].rev-a[1].rev);
   const totalRev = sorted.reduce((s,x)=>s+x[1].rev,0);
+  _lastItems = { rows: sorted.map(([name,d])=>[name,d.qty,d.rev]), from, to };
   document.getElementById('itemsBody').innerHTML = sorted.map(([name,d],i)=>`
     <tr>
       <td>${i+1}</td>
@@ -986,6 +1351,14 @@ async function generateItemsAnalytics() {
     data:{labels:top10.map(x=>x[0].length>15?x[0].slice(0,15)+'…':x[0]),datasets:[{label:'Revenue',data:top10.map(x=>x[1].rev),backgroundColor:'#D97706'}]},
     options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}}}
   });
+}
+
+function exportItemsExcel() {
+  if (!_lastItems.rows.length) { alert('Generate the report first.'); return; }
+  const ws = XLSX.utils.aoa_to_sheet([['Item','Qty Sold','Revenue'], ..._lastItems.rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Items');
+  XLSX.writeFile(wb, `items_${_lastItems.from}_to_${_lastItems.to}.xlsx`);
 }
 
 async function generateCategoryAnalytics() {
@@ -1171,7 +1544,16 @@ async function loadMenuForTables() {
 async function loadAllTableDrafts() {
   try {
     const drafts = await apiFetch('/api/table-orders');
-    drafts.forEach(d => { tableOrders[+d.tableNumber] = { ...d, items: d.items||[] }; });
+    customTableIds = [];
+    drafts.forEach(d => {
+      const isFixed = /^[1-9]\d*$/.test(d.tableNumber) && +d.tableNumber <= TABLECOUNT && !d.isCustom;
+      if (isFixed) {
+        tableOrders[+d.tableNumber] = { ...d, items: d.items||[] };
+      } else {
+        tableOrders[d.tableNumber] = { ...d, items: d.items||[] };
+        customTableIds.push(d.tableNumber);
+      }
+    });
   } catch(e) { console.warn('loadAllTableDrafts',e); }
 }
 
@@ -1223,32 +1605,69 @@ function addItemToDraft(item) {
 
 function renderTablesList() {
   const list = document.getElementById('tablesList');
+  // Preserve the hamburger button at the start
+  const hamburger = document.getElementById('posHamburgerBtn');
   list.innerHTML = '';
+  if (hamburger) list.appendChild(hamburger);
+
   for (let i=1;i<=TABLECOUNT;i++) {
     const t = tableOrders[i];
-    const total = (t.items||[]).reduce((s,it)=>s+it.price*it.qty,0);
+    const total = (t.items||[]).reduce((s,it)=>s+it.price*it.qty,0) + Number(t.extraCharge||0);
     const btn = document.createElement('button');
-    btn.className = 'table-btn'+(selectedTable===i?' active':'');
+    btn.className = 'table-btn'+(String(selectedTable)===String(i)?' active':'');
     btn.innerHTML = `<div class="tn">T${i}</div><div class="ts">${esc(t.customerName||'Empty')}</div><div class="ts">₹${total}</div>`;
     btn.onclick = () => selectTable(i);
     list.appendChild(btn);
   }
+
+  customTableIds.forEach(id => {
+    const t = tableOrders[id] || { items: [], extraCharge: 0, customerName: '' };
+    const total = (t.items||[]).reduce((s,it)=>s+it.price*it.qty,0) + Number(t.extraCharge||0);
+    const btn = document.createElement('button');
+    btn.className = 'table-btn custom-table'+(String(selectedTable)===String(id)?' active':'');
+    btn.innerHTML = `<div class="tn">${esc(id)}</div><div class="ts">${esc(t.customerName||'Walk-in')}</div><div class="ts">₹${total}</div>`;
+    btn.onclick = () => selectTable(id);
+    list.appendChild(btn);
+  });
+}
+
+function createCustomTable() {
+  const nameInput = document.getElementById('newCustomTableName');
+  const raw = nameInput.value.trim();
+  if (!raw) { alert('Enter a name for the new table.'); return; }
+  // Make a safe, unique identifier while keeping the readable name
+  const id = raw.replace(/\s+/g,' ').slice(0,40);
+  if (customTableIds.includes(id) || tableOrders[id]) { alert('A table with this name already exists.'); selectTable(id); nameInput.value=''; return; }
+  tableOrders[id] = { tableNumber: id, customerName:'', mobile:'', guestCount:1, items:[], extraCharge:0, isCustom:true };
+  customTableIds.push(id);
+  nameInput.value = '';
+  renderTablesList();
+  selectTable(id);
+  // Close side panel so the manager can start adding items right away
+  document.getElementById('posSidePanel').classList.remove('open');
+  document.getElementById('posSidePanelOverlay').classList.remove('open');
+  document.getElementById('posLayout').classList.remove('pos-focus');
 }
 
 function selectTable(n) {
   selectedTable = n;
-  const t = tableOrders[n];
-  document.getElementById('selectedTableTitle').textContent = `Table ${n}`;
+  const t = tableOrders[n] || { tableNumber:String(n), customerName:'', mobile:'', guestCount:1, items:[], extraCharge:0 };
+  tableOrders[n] = t;
+  const isCustom = typeof n === 'string' && !/^\d+$/.test(String(n));
+  document.getElementById('selectedTableTitle').textContent = isCustom ? n : `Table ${n}`;
   document.getElementById('tableCustomerName').value = t.customerName||'';
   document.getElementById('tableCustomerMobile').value = t.mobile||'';
   document.getElementById('tableGuestCount').value = t.guestCount||1;
+  document.getElementById('tableExtraCharge').value = t.extraCharge||0;
   renderTablesList();
   renderTableDraft();
+  loadTableLedger();
 }
 
 function renderTableDraft() {
   const t = tableOrders[selectedTable];
-  const total = (t.items||[]).reduce((s,it)=>s+it.price*it.qty,0);
+  const itemsTotal = (t.items||[]).reduce((s,it)=>s+it.price*it.qty,0);
+  const total = itemsTotal + Number(t.extraCharge||0);
   const el = document.getElementById('tableDraftItems');
   el.innerHTML = '';
   if (!t.items.length) { el.innerHTML = `<div style="text-align:center;padding:1rem;color:var(--muted);font-size:.8rem;">No items added</div>`; }
@@ -1274,6 +1693,15 @@ function renderTableDraft() {
   document.getElementById('tableDraftTotal').textContent = total.toLocaleString('en-IN');
 }
 
+function onTableExtraChargeInput() {
+  const t = tableOrders[selectedTable];
+  t.extraCharge = +document.getElementById('tableExtraCharge').value || 0;
+  renderTableDraft();
+  renderTablesList();
+  autoSaveDraft();
+}
+window.onTableExtraChargeInput = onTableExtraChargeInput;
+
 function changeQty(idx, delta) {
   const t = tableOrders[selectedTable];
   t.items[idx].qty += delta;
@@ -1288,19 +1716,26 @@ function removeItem(idx) {
 
 async function autoSaveDraft() {
   const t = tableOrders[selectedTable];
+  const isCustom = typeof selectedTable === 'string' && !/^\d+$/.test(String(selectedTable));
   try {
     await apiFetch('/api/table-orders/save-draft', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ tableNumber: String(selectedTable), customerName: t.customerName||'', mobile: t.mobile||'', guestCount: t.guestCount||1, items: t.items })
+      body: JSON.stringify({ tableNumber: String(selectedTable), customerName: t.customerName||'', mobile: t.mobile||'', guestCount: t.guestCount||1, items: t.items, extraCharge: t.extraCharge||0, isCustom })
     });
   } catch(e) { console.warn('Draft auto-save failed',e); }
 }
 
 function clearTableOrder() {
   if (!confirm('Clear this table order?')) return;
-  tableOrders[selectedTable] = { tableNumber: String(selectedTable), customerName:'', mobile:'', guestCount:1, items:[] };
-  selectTable(selectedTable);
+  const wasCustom = typeof selectedTable === 'string' && !/^\d+$/.test(String(selectedTable));
+  tableOrders[selectedTable] = { tableNumber: String(selectedTable), customerName:'', mobile:'', guestCount:1, items:[], extraCharge:0 };
   fetch('/api/table-orders/clear', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({tableNumber:String(selectedTable)}) }).catch(()=>{});
+  if (wasCustom) {
+    customTableIds = customTableIds.filter(id => id !== selectedTable);
+    delete tableOrders[selectedTable];
+    selectedTable = 1;
+  }
+  selectTable(selectedTable);
 }
 
 async function saveDraftTable() {
@@ -1308,8 +1743,9 @@ async function saveDraftTable() {
   t.customerName = document.getElementById('tableCustomerName').value;
   t.mobile = document.getElementById('tableCustomerMobile').value;
   t.guestCount = +document.getElementById('tableGuestCount').value||1;
+  t.extraCharge = +document.getElementById('tableExtraCharge').value||0;
   await autoSaveDraft();
-  alert(`Table ${selectedTable} draft saved!`);
+  alert(`${typeof selectedTable==='string' && !/^\d+$/.test(String(selectedTable)) ? selectedTable : 'Table '+selectedTable} draft saved!`);
 }
 
 async function printTableKOT() {
@@ -1345,11 +1781,21 @@ async function finalizeTableOrder() {
   t.customerName = document.getElementById('tableCustomerName').value;
   t.mobile = document.getElementById('tableCustomerMobile').value;
   t.guestCount = +document.getElementById('tableGuestCount').value||1;
+  t.extraCharge = +document.getElementById('tableExtraCharge').value||0;
+
+  let ledgerApplied = 0;
+  if (t.mobile && currentLedgerBalance) {
+    const suggestion = currentLedgerBalance > 0
+      ? `This customer has ₹${currentLedgerBalance} advance credit. Apply it to this bill?`
+      : `This customer has ₹${Math.abs(currentLedgerBalance)} in dues. Add it to this bill?`;
+    if (confirm(suggestion)) ledgerApplied = currentLedgerBalance;
+  }
 
   try {
+    const wasCustom = typeof selectedTable === 'string' && !/^\d+$/.test(String(selectedTable));
     const data = await apiFetch('/api/table-orders/finalize', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ tableNumber: String(selectedTable), customerName: t.customerName, mobile: t.mobile, guestCount: t.guestCount, items: t.items })
+      body: JSON.stringify({ tableNumber: String(selectedTable), customerName: t.customerName, mobile: t.mobile, guestCount: t.guestCount, items: t.items, extraCharge: t.extraCharge||0, extraChargeNote: t.extraCharge ? 'Extra Charge' : '', ledgerApplied })
     });
 
     if (data.success && data.order) {
@@ -1360,13 +1806,67 @@ async function finalizeTableOrder() {
       w.document.write(`<pre style="font-family:'Courier New',monospace;font-size:13px;padding:20px;">${esc(text)}</pre>`);
       w.document.close(); w.print();
 
-      // Clear table
-      tableOrders[selectedTable] = { tableNumber: String(selectedTable), customerName:'', mobile:'', guestCount:1, items:[] };
+      // Clear table (and remove custom table from the list — it's a one-off, transient table)
+      if (wasCustom) {
+        customTableIds = customTableIds.filter(id => id !== selectedTable);
+        delete tableOrders[selectedTable];
+        selectedTable = 1;
+      } else {
+        tableOrders[selectedTable] = { tableNumber: String(selectedTable), customerName:'', mobile:'', guestCount:1, items:[], extraCharge:0 };
+      }
       selectTable(selectedTable);
       fetchOrders();
     }
   } catch(e) { alert('Error: '+e.message); }
 }
+
+// ─────────────────────────────── CUSTOMER LEDGER (advance / dues) ─────
+async function loadTableLedger() {
+  const mobile = document.getElementById('tableCustomerMobile').value.trim();
+  const badge = document.getElementById('tableLedgerBadge');
+  if (!mobile) { badge.innerHTML = ''; currentLedgerBalance = 0; return; }
+  try {
+    const data = await apiFetch(`/api/ledger/${encodeURIComponent(mobile)}`);
+    currentLedgerBalance = data.balance || 0;
+    if (!currentLedgerBalance) { badge.innerHTML = ''; return; }
+    if (currentLedgerBalance > 0) {
+      badge.innerHTML = `<span class="ledger-badge ledger-credit">💰 Advance credit: ₹${currentLedgerBalance}</span> <button class="btn btn-xs btn-secondary" onclick="openLedgerModal()">Adjust</button>`;
+    } else {
+      badge.innerHTML = `<span class="ledger-badge ledger-dues">⚠ Dues: ₹${Math.abs(currentLedgerBalance)}</span> <button class="btn btn-xs btn-secondary" onclick="openLedgerModal()">Adjust</button>`;
+    }
+  } catch(e) { badge.innerHTML = ''; currentLedgerBalance = 0; }
+}
+window.loadTableLedger = loadTableLedger;
+
+function openLedgerModal() {
+  const mobile = document.getElementById('tableCustomerMobile').value.trim();
+  const name = document.getElementById('tableCustomerName').value.trim();
+  if (!mobile) { alert('Enter the customer mobile number first.'); return; }
+  document.getElementById('ledgerCustomerLabel').textContent = `${name||'Customer'} — ${mobile}`;
+  document.getElementById('ledgerCurrentBalance').innerHTML = currentLedgerBalance
+    ? (currentLedgerBalance > 0
+        ? `<span class="ledger-badge ledger-credit">Current: ₹${currentLedgerBalance} advance</span>`
+        : `<span class="ledger-badge ledger-dues">Current: ₹${Math.abs(currentLedgerBalance)} dues</span>`)
+    : '<span style="font-size:.8rem;color:var(--muted);">No balance on file</span>';
+  document.getElementById('ledgerAmountInput').value = '';
+  document.getElementById('ledgerNoteInput').value = '';
+  openModal('ledgerModal');
+}
+window.openLedgerModal = openLedgerModal;
+
+async function submitLedgerAdjust() {
+  const mobile = document.getElementById('tableCustomerMobile').value.trim();
+  const customerName = document.getElementById('tableCustomerName').value.trim();
+  const amount = +document.getElementById('ledgerAmountInput').value || 0;
+  const note = document.getElementById('ledgerNoteInput').value.trim();
+  if (!mobile || !amount) { alert('Enter mobile and a non-zero amount.'); return; }
+  try {
+    await apiFetch('/api/ledger/adjust', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ mobile, customerName, amount, note }) });
+    closeModal('ledgerModal');
+    loadTableLedger();
+  } catch(e) { alert('Could not save: '+e.message); }
+}
+window.submitLedgerAdjust = submitLedgerAdjust;
 
 // ─────────────────────────────── PENDING DINE-IN ─────────────────────
 let pendingDineInReqs = [];
@@ -1434,6 +1934,7 @@ async function handleCustomerAutoComplete(inputEl, otherFieldId, listSuffix) {
           document.getElementById('mobileAcList').style.display='none';
           tableOrders[selectedTable].customerName = c.customerName||'';
           tableOrders[selectedTable].mobile = c.mobile||'';
+          loadTableLedger();
         };
         list.appendChild(item);
       });
@@ -1479,6 +1980,7 @@ async function performLookup() {
           <button class="btn btn-xs btn-primary" onclick="lookupPrint('${o._id}')">🖨 Print</button>
           <button class="btn btn-xs btn-warning" onclick="lookupKOT('${o._id}')">🎫 KOT</button>
           <button class="btn btn-xs btn-secondary" onclick="openEditOrder('${o._id}')">✏ Edit</button>
+          <button class="btn btn-xs btn-danger" onclick="deleteOrder('${o._id}')">🗑 Delete</button>
         </div>`;
       res.appendChild(card);
     });
