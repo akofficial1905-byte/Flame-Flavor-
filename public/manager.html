@@ -1178,6 +1178,7 @@ function buildOrderCard(o) {
       <button class="btn btn-xs btn-info" onclick="quickPrintKOT('${o._id}')">🎫 KOT</button>
       <button class="btn btn-xs btn-secondary" onclick="openPrint('${o._id}')" title="Preview, or send via WhatsApp">👁</button>
       <button class="btn btn-xs btn-secondary" onclick="openEditOrder('${o._id}')">Edit</button>
+      ${(o.orderType && o.orderType !== 'dinein') ? `<button class="btn btn-xs ${o.paymentVerified?'btn-success':'btn-warning'}" onclick="verifyPayment('${o._id}', ${!!o.paymentVerified})">${o.paymentVerified?'✔ Paid':'💰 Verify Payment'}</button>` : ''}
       ${!isDelivered?`<button class="btn btn-xs btn-success" onclick="markDelivered('${o._id}')">✔ Delivered</button>`:''}
       <button class="btn btn-xs btn-danger" onclick="deleteOrder('${o._id}')">🗑 Delete</button>
       <select class="form-select" style="width:auto;font-size:.72rem;padding:.2rem .5rem;" onchange="updateStatus('${o._id}',this.value)">
@@ -1196,6 +1197,19 @@ async function markDelivered(id) {
   dismissOrderPopup(id);
   fetchOrders();
 }
+
+// Only meaningful for delivery/takeaway orders — dine-in is always pay-later, no verification needed.
+async function verifyPayment(id, currentlyVerified) {
+  try {
+    await apiFetch(`/api/orders/${id}/payment-verified`, {
+      method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ paymentVerified: !currentlyVerified })
+    });
+    fetchOrders();
+    performLookup();
+  } catch(e) { alert('Could not update payment status: '+e.message); }
+}
+window.verifyPayment = verifyPayment;
 
 async function updateStatus(id, status) {
   if (!status) return;
@@ -1354,12 +1368,14 @@ function buildReceiptHTML(o) {
 
   // Kept intentionally minimal to save paper: name, mobile, order #, GSTIN (if applicable),
   // address (delivery/takeaway orders only, shown when present), items, and total.
+  // Payment method/status is shown for delivery & takeaway only — dine-in is always pay-later.
   const metaRows = [
     ['Order #', String(o._id||'').slice(-6).toUpperCase()],
     ['Name', o.customerName || 'N/A'],
     o.mobile ? ['Mobile', o.mobile] : null,
     o.tableNumber ? ['Table', o.tableNumber] : null,
     o.address ? ['Address', o.address] : null,
+    (o.orderType && o.orderType !== 'dinein') ? ['Payment', `${o.paymentMethod||'COD'}${o.paymentVerified ? ' - PAID' : ' - PENDING'}`] : null,
     o.gstin ? ['GSTIN', o.gstin] : null
   ].filter(Boolean).map(([k,v]) => `<div class="p-meta-row"><span>${esc(k)}</span><b>${esc(String(v))}</b></div>`).join('');
 
@@ -2389,6 +2405,7 @@ async function performLookup() {
           <button class="btn btn-xs btn-warning" onclick="quickPrintKOT('${o._id}')">🎫 KOT</button>
           <button class="btn btn-xs btn-secondary" onclick="openPrint('${o._id}')" title="Preview, or send via WhatsApp">👁</button>
           <button class="btn btn-xs btn-secondary" onclick="openEditOrder('${o._id}')">✏ Edit</button>
+          ${(o.orderType && o.orderType !== 'dinein') ? `<button class="btn btn-xs ${o.paymentVerified?'btn-success':'btn-warning'}" onclick="verifyPayment('${o._id}', ${!!o.paymentVerified})">${o.paymentVerified?'✔ Paid':'💰 Verify Payment'}</button>` : ''}
           <button class="btn btn-xs btn-danger" onclick="deleteOrder('${o._id}')">🗑 Delete</button>
         </div>`;
       res.appendChild(card);
