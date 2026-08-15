@@ -1133,7 +1133,9 @@ function buildOrderCard(o) {
     ${o.tableNumber?`<div style="font-size:.75rem;color:var(--muted);">🪑 Table ${esc(o.tableNumber)}</div>`:''}
     <div style="font-size:.78rem;color:var(--muted);margin:.3rem 0 .6rem;">${esc((o.items||[]).map(i=>i.name+' x'+i.qty).join(', ')||'No items')}</div>
     <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
-      <button class="btn btn-xs btn-primary" onclick="openPrint('${o._id}')">Print</button>
+      <button class="btn btn-xs btn-primary" onclick="quickPrintReceipt('${o._id}')">🖨 Print</button>
+      <button class="btn btn-xs btn-info" onclick="quickPrintKOT('${o._id}')">🎫 KOT</button>
+      <button class="btn btn-xs btn-secondary" onclick="openPrint('${o._id}')" title="Preview, or send via WhatsApp">👁</button>
       <button class="btn btn-xs btn-secondary" onclick="openEditOrder('${o._id}')">Edit</button>
       ${!isDelivered?`<button class="btn btn-xs btn-success" onclick="markDelivered('${o._id}')">✔ Delivered</button>`:''}
       <button class="btn btn-xs btn-danger" onclick="deleteOrder('${o._id}')">🗑 Delete</button>
@@ -1209,6 +1211,33 @@ function renderServiceRequests() {
 }
 
 // ─────────────────────────────── PRINT ───────────────────────────────
+// ─────────────────────────────── ONE-CLICK PRINT (no preview step) ───
+async function quickPrintReceipt(orderId) {
+  try {
+    const o = await apiFetch(`/api/orders/${orderId}`);
+    currentPrintOrder = o;
+    currentPrintOrderId = orderId;
+    openPrintWindow(buildReceiptHTML(o));
+  } catch(e) { alert('Could not print: '+e.message); }
+}
+window.quickPrintReceipt = quickPrintReceipt;
+
+async function quickPrintKOT(orderId) {
+  try {
+    const o = await apiFetch(`/api/orders/${orderId}`);
+    currentPrintOrder = o;
+    currentPrintOrderId = orderId;
+    openPrintWindow(buildKOTHTML({
+      tableLabel: o.tableNumber || '',
+      customerName: o.customerName || '',
+      mobile: o.mobile || '',
+      items: o.items || [],
+      timeLabel: fmtDateTime(o.createdAt)
+    }));
+  } catch(e) { alert('Could not print: '+e.message); }
+}
+window.quickPrintKOT = quickPrintKOT;
+
 async function openPrint(orderId) {
   currentPrintOrderId = orderId;
   const o = await apiFetch(`/api/orders/${orderId}`);
@@ -2310,24 +2339,15 @@ async function performLookup() {
         <div style="font-size:.75rem;color:var(--muted);margin:.3rem 0 .5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(itemsText)}</div>
         <div style="font-size:.65rem;color:var(--muted);margin-bottom:.6rem;opacity:.7;">ID: ${esc(o._id)}</div>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
-          <button class="btn btn-xs btn-primary" onclick="lookupPrint('${o._id}')">🖨 Print</button>
-          <button class="btn btn-xs btn-warning" onclick="lookupKOT('${o._id}')">🎫 KOT</button>
+          <button class="btn btn-xs btn-primary" onclick="quickPrintReceipt('${o._id}')">🖨 Print</button>
+          <button class="btn btn-xs btn-warning" onclick="quickPrintKOT('${o._id}')">🎫 KOT</button>
+          <button class="btn btn-xs btn-secondary" onclick="openPrint('${o._id}')" title="Preview, or send via WhatsApp">👁</button>
           <button class="btn btn-xs btn-secondary" onclick="openEditOrder('${o._id}')">✏ Edit</button>
           <button class="btn btn-xs btn-danger" onclick="deleteOrder('${o._id}')">🗑 Delete</button>
         </div>`;
       res.appendChild(card);
     });
   } catch(e) { res.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--red);">Error: ${esc(e.message)}</div>`; }
-}
-
-async function lookupPrint(orderId) {
-  currentPrintOrderId = orderId;
-  await openPrint(orderId);
-}
-
-async function lookupKOT(orderId) {
-  currentPrintOrderId = orderId;
-  await doPrintKOT();
 }
 
 // ─────────────────────────────── CHANGE LOGIN ────────────────────────
