@@ -116,22 +116,17 @@
     .analytics-content.active{display:block;}
 
     /* ── POS ── */
-    .pos-layout{display:grid;grid-template-columns:190px 1fr 270px;gap:.75rem;flex:1;overflow:hidden;transition:grid-template-columns .25s ease;}
-    .pos-layout.pos-focus{grid-template-columns:0px 1fr 0px;}
-    .pos-layout.pos-focus .pos-panel.pos-side{display:none;}
-    .pos-panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow-y:auto;padding:.75rem;}
+    .pos-layout{display:grid;grid-template-columns:200px 1fr 340px;gap:.9rem;flex:1;overflow:hidden;}
+    .pos-panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow-y:auto;padding:1rem;}
     .category-btn{width:100%;padding:.6rem .75rem;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-weight:600;font-size:.8rem;transition:all .15s;text-align:left;margin-bottom:.35rem;}
     .category-btn:hover{border-color:var(--amber);background:var(--surface2);}
     .category-btn.active{background:var(--navy);color:#fff;border-color:var(--navy);}
-    .menu-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem;}
-    .pos-layout.pos-focus .menu-grid{grid-template-columns:repeat(4,1fr);gap:.9rem;}
-    .menu-card{padding:.7rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .15s;}
-    .pos-layout.pos-focus .menu-card{padding:1.3rem 1rem;aspect-ratio:1/1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;border-radius:12px;}
-    .menu-card:hover{border-color:var(--amber);background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06);}
-    .menu-card-name{font-weight:600;font-size:.8rem;margin-bottom:.2rem;}
-    .pos-layout.pos-focus .menu-card-name{font-size:.95rem;}
-    .menu-card-price{color:var(--amber);font-weight:700;font-size:.85rem;}
-    .draft-item{display:flex;justify-content:space-between;align-items:center;padding:.55rem .65rem;background:var(--surface2);border-radius:6px;margin-bottom:.4rem;font-size:.8rem;}
+    .menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.9rem;}
+    .menu-card{padding:1.1rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:12px;cursor:pointer;transition:all .15s;aspect-ratio:1/1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;}
+    .menu-card:hover{border-color:var(--amber);background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.08);transform:translateY(-2px);}
+    .menu-card-name{font-weight:700;font-size:.92rem;margin-bottom:.3rem;}
+    .menu-card-price{color:var(--amber);font-weight:700;font-size:.95rem;}
+    .draft-item{display:flex;justify-content:space-between;align-items:center;padding:.6rem .7rem;background:var(--surface2);border-radius:8px;margin-bottom:.5rem;font-size:.82rem;}
     .tables-row{display:flex;flex-wrap:wrap;gap:.5rem;padding:.75rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0;align-items:center;}
     .table-btn{padding:.5rem .9rem;background:#fff;border:2px solid var(--border);border-radius:7px;cursor:pointer;text-align:center;transition:all .15s;min-width:80px;}
     .table-btn:hover{border-color:var(--amber);}
@@ -139,11 +134,30 @@
     .table-btn.custom-table{border-style:dashed;}
     .table-btn .tn{font-size:1rem;font-weight:700;}
     .table-btn .ts{font-size:.65rem;opacity:.8;}
+    .pos-section-label{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--navy);margin:0 0 .6rem;padding-bottom:.4rem;border-bottom:2px solid var(--border);}
 
-    /* ── HAMBURGER / POS SIDE PANEL ── */
+    /* ── HEADER HAMBURGER (main nav toggle) ── */
     .hamburger-btn{width:38px;height:34px;border-radius:7px;border:1.5px solid var(--border);background:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;flex-shrink:0;}
     .hamburger-btn span{display:block;width:18px;height:2px;background:var(--navy);border-radius:2px;}
     .hamburger-btn:hover{border-color:var(--amber);}
+    .hamburger-btn.on-dark{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.3);}
+    .hamburger-btn.on-dark span{background:#fff;}
+
+    /* ── MAIN NAV SIDEBAR AS OVERLAY DRAWER ── */
+    .sidebar{
+      position:fixed;top:0;left:0;bottom:0;width:220px;max-width:85vw;
+      z-index:950;transform:translateX(-100%);transition:transform .25s ease;
+      box-shadow:6px 0 30px rgba(0,0,0,.2);
+    }
+    .sidebar.open{transform:translateX(0);}
+    #navOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:940;}
+    #navOverlay.open{display:block;}
+
+    /* ── NAV BADGES (new order / pending request counters) ── */
+    .tab-btn{position:relative;}
+    .nav-badge{position:absolute;top:6px;right:10px;background:var(--red);color:#fff;border-radius:999px;min-width:19px;height:19px;padding:0 5px;font-size:.66rem;font-weight:800;display:none;align-items:center;justify-content:center;box-shadow:0 0 0 2px #fff;}
+
+    /* ── POS SIDE PANEL (GST / charges / custom tables) ── */
     #posSidePanel{display:none;position:fixed;top:0;right:0;bottom:0;width:340px;max-width:92vw;background:#fff;box-shadow:-6px 0 30px rgba(0,0,0,.18);z-index:900;flex-direction:column;overflow:hidden;}
     #posSidePanel.open{display:flex;}
     #posSidePanelOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:899;}
@@ -215,25 +229,29 @@
 <div id="managerApp" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
 
   <header>
-    <div>
-      <h1>Sip and Bite</h1>
-      <p>Manager Portal — Orders · Analytics · POS</p>
+    <div style="display:flex;align-items:center;gap:.75rem;">
+      <button id="navToggleBtn" class="hamburger-btn on-dark" title="Menu" type="button"><span></span><span></span><span></span></button>
+      <div>
+        <h1>Sip and Bite</h1>
+        <p>Manager Portal — Orders · Analytics · POS</p>
+      </div>
     </div>
     <div style="display:flex;gap:.5rem;align-items:center;">
       <span id="liveTime" style="color:rgba(255,255,255,.7);font-size:.78rem;"></span>
+      <button class="btn btn-sm" id="settingsGearBtn" style="background:rgba(255,255,255,.15);color:#fff;" title="More Options — GST, Charges, Custom Tables" type="button">⚙️ Options</button>
       <button class="btn btn-sm" style="background:var(--amber);color:#fff;" onclick="openModal('changeLoginModal')">Change Login</button>
       <button class="btn btn-sm btn-danger" id="logoutBtn">Logout</button>
     </div>
   </header>
 
   <div class="shell">
-    <!-- SIDEBAR -->
+    <!-- SIDEBAR (overlay drawer, hidden by default, opened via header hamburger) -->
     <div class="sidebar">
       <div class="nav-label">Menu</div>
-      <button class="tab-btn active" data-tab="orders" onclick="switchTab('orders',this)">📋 Orders</button>
+      <button class="tab-btn" data-tab="orders" onclick="switchTab('orders',this)">📋 Orders <span class="nav-badge" id="ordersBadge">0</span></button>
       <button class="tab-btn" data-tab="dashboard" onclick="switchTab('dashboard',this)">📊 Dashboard</button>
       <button class="tab-btn" data-tab="analytics" onclick="switchTab('analytics',this)">📈 Analytics</button>
-      <button class="tab-btn" data-tab="tables" onclick="switchTab('tables',this)">🍽️ Dine-In POS</button>
+      <button class="tab-btn active" data-tab="tables" onclick="switchTab('tables',this)">🍽️ Dine-In POS <span class="nav-badge" id="posBadge">0</span></button>
       <button class="tab-btn" data-tab="lookup" onclick="switchTab('lookup',this)">🔍 Look Up</button>
       <button class="tab-btn" data-tab="inventory" onclick="switchTab('inventory',this)">📦 Inventory</button>
       <div style="flex:1;"></div>
@@ -243,7 +261,7 @@
     <div class="main">
 
       <!-- ═══════════ ORDERS ═══════════ -->
-      <div id="ordersTab" class="tab-content active" style="overflow:hidden;">
+      <div id="ordersTab" class="tab-content" style="overflow:hidden;">
         <div style="padding:.75rem 1.25rem .5rem;flex-shrink:0;display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap;border-bottom:1px solid var(--border);">
           <div class="form-group" style="margin:0;"><label class="form-label">Date</label><input id="datePicker" type="date" class="form-input" style="width:160px;"/></div>
           <div class="form-group" style="margin:0;"><label class="form-label">Status</label>
@@ -452,11 +470,9 @@
       </div>
 
       <!-- ═══════════ TABLES / POS ═══════════ -->
-      <div id="tablesTab" class="tab-content">
+      <div id="tablesTab" class="tab-content active">
         <!-- Table selector row -->
-        <div class="tables-row" id="tablesList">
-          <button class="hamburger-btn" id="posHamburgerBtn" title="More options" type="button"><span></span><span></span><span></span></button>
-        </div>
+        <div class="tables-row" id="tablesList"></div>
 
         <!-- Pending dine-in -->
         <div id="pendingSection" style="display:none;flex-shrink:0;padding:.5rem 1.25rem;border-bottom:1px solid var(--border);background:#FFFBEB;">
@@ -467,24 +483,25 @@
         <!-- POS area -->
         <div class="pos-layout" id="posLayout" style="padding:.75rem 1.25rem;flex:1;overflow:hidden;">
           <!-- Categories -->
-          <div class="pos-panel pos-side" style="display:flex;flex-direction:column;gap:.35rem;">
-            <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;margin-bottom:.4rem;">Categories</div>
+          <div class="pos-panel" style="display:flex;flex-direction:column;gap:.35rem;">
+            <div class="pos-section-label">Categories</div>
             <div id="categoriesList"></div>
             <input id="tableMenuSearch" type="text" class="form-input" style="font-size:.78rem;margin-top:.5rem;" placeholder="Search items…" oninput="renderTableMenuList()"/>
           </div>
 
           <!-- Menu items -->
           <div class="pos-panel">
-            <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;margin-bottom:.6rem;" id="selCatTitle">Select category →</div>
+            <div class="pos-section-label" id="selCatTitle">Select category →</div>
             <div class="menu-grid" id="tableMenuList"></div>
           </div>
 
           <!-- Draft bill -->
-          <div class="pos-panel pos-side" style="display:flex;flex-direction:column;">
-            <div style="font-size:1.1rem;font-weight:700;margin-bottom:.6rem;" id="selectedTableTitle">Table 1</div>
+          <div class="pos-panel" style="display:flex;flex-direction:column;">
+            <div style="font-size:1.2rem;font-weight:800;margin-bottom:.75rem;color:var(--navy);" id="selectedTableTitle">Table 1</div>
 
             <div id="tableLedgerBadge"></div>
 
+            <div class="pos-section-label">Customer</div>
             <!-- Customer autocomplete -->
             <div class="form-group autocomplete-wrap" style="margin-bottom:.5rem;">
               <label class="form-label">Customer Name</label>
@@ -496,26 +513,26 @@
               <input id="tableCustomerMobile" type="text" id2="tableMobileField" class="form-input" placeholder="Phone" oninput="handleCustomerAutoComplete(this,'tableCustomerName','tableCustomerMobile'); loadTableLedger();" autocomplete="off"/>
               <div class="autocomplete-list" id="mobileAcList"></div>
             </div>
-            <div class="form-group" style="margin-bottom:.6rem;">
+            <div class="form-group" style="margin-bottom:1rem;">
               <label class="form-label">Guests</label>
               <input id="tableGuestCount" type="number" class="form-input" min="1" value="1"/>
             </div>
 
-            <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;margin-bottom:.4rem;">Items</div>
-            <div id="tableDraftItems" style="flex:1;overflow-y:auto;min-height:80px;max-height:220px;margin-bottom:.6rem;"></div>
+            <div class="pos-section-label">Items</div>
+            <div id="tableDraftItems" style="flex:1;overflow-y:auto;min-height:80px;max-height:220px;margin-bottom:.75rem;"></div>
 
-            <div class="form-group" style="margin-bottom:.5rem;">
+            <div class="form-group" style="margin-bottom:.75rem;">
               <label class="form-label">Extra Charge (delivery/misc)</label>
               <input id="tableExtraCharge" type="number" class="form-input" min="0" value="0" oninput="onTableExtraChargeInput()"/>
             </div>
 
-            <div style="background:var(--surface2);padding:.75rem;border-radius:7px;text-align:right;margin-bottom:.7rem;">
+            <div style="background:var(--surface2);padding:.9rem;border-radius:9px;text-align:right;margin-bottom:.9rem;border:1px solid var(--border);">
               <div style="font-size:.7rem;color:var(--muted);">Total</div>
-              <div style="font-size:1.5rem;font-weight:700;color:var(--navy);">₹<span id="tableDraftTotal">0</span></div>
+              <div style="font-size:1.6rem;font-weight:800;color:var(--navy);">₹<span id="tableDraftTotal">0</span></div>
             </div>
 
             <!-- 4 action buttons -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;">
               <button class="btn btn-secondary btn-sm" onclick="clearTableOrder()">🗑 Clear</button>
               <button class="btn btn-warning btn-sm" onclick="saveDraftTable()">💾 Draft</button>
               <button class="btn btn-info btn-sm" onclick="printTableKOT()">🎫 KOT</button>
@@ -562,7 +579,10 @@
   </div><!-- /shell -->
 </div><!-- /app -->
 
-<!-- ═══════════════ POS SIDE PANEL (hamburger) ═══════════════ -->
+<!-- ═══════════════ MAIN NAV OVERLAY (backdrop for the sidebar drawer) ═══════════════ -->
+<div id="navOverlay"></div>
+
+<!-- ═══════════════ POS SIDE PANEL (hamburger / settings gear — GST, charges, custom tables) ═══════════════ -->
 <div id="posSidePanelOverlay"></div>
 <div id="posSidePanel">
   <div class="side-panel-header">
@@ -847,7 +867,8 @@ async function initManager() {
   await fetchOrders();
   await renderDashboard();
   await loadPendingDineIn();
-  wirePosSidePanel();
+  wireNavSidebar();
+  wireSettingsPanel();
 }
 
 // ─────────────────────────────── TABS ────────────────────────────────
@@ -868,6 +889,34 @@ function switchAnalytics(section, el) {
 // ─────────────────────────────── MODALS ──────────────────────────────
 function openModal(id) { document.getElementById(id).classList.add('active'); }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// ─────────────────────────────── MAIN NAV SIDEBAR (header hamburger) ──
+function wireNavSidebar() {
+  const btn = document.getElementById('navToggleBtn');
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('navOverlay');
+  if (!btn || !sidebar || !overlay) return;
+  const openNav = () => { sidebar.classList.add('open'); overlay.classList.add('open'); };
+  const closeNav = () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); };
+  btn.onclick = openNav;
+  overlay.onclick = closeNav;
+  // Auto-close the drawer once a section is picked, so the chosen section gets full screen
+  document.querySelectorAll('.sidebar .tab-btn').forEach(b => b.addEventListener('click', closeNav));
+}
+
+// ─────────────────────────────── SETTINGS PANEL (header gear — GST/charges/tables) ──
+function wireSettingsPanel() {
+  const btn = document.getElementById('settingsGearBtn');
+  const panel = document.getElementById('posSidePanel');
+  const overlay = document.getElementById('posSidePanelOverlay');
+  const closeBtn = document.getElementById('posSidePanelCloseBtn');
+  if (!btn || !panel || !overlay || !closeBtn) return;
+  const openPanel = () => { panel.classList.add('open'); overlay.classList.add('open'); };
+  const closePanel = () => { panel.classList.remove('open'); overlay.classList.remove('open'); };
+  btn.onclick = openPanel;
+  closeBtn.onclick = closePanel;
+  overlay.onclick = closePanel;
+}
 
 // ─────────────────────────────── SETTINGS (GST / CHARGES) ────────────
 async function loadSettings() {
@@ -900,28 +949,6 @@ async function saveSettings() {
   } catch(e) { console.warn('saveSettings', e); }
 }
 
-// ─────────────────────────────── POS SIDE PANEL (hamburger) ──────────
-function wirePosSidePanel() {
-  const btn = document.getElementById('posHamburgerBtn');
-  const panel = document.getElementById('posSidePanel');
-  const overlay = document.getElementById('posSidePanelOverlay');
-  const closeBtn = document.getElementById('posSidePanelCloseBtn');
-  const posLayout = document.getElementById('posLayout');
-  if (!btn) return;
-  btn.onclick = () => {
-    panel.classList.add('open');
-    overlay.classList.add('open');
-    posLayout.classList.add('pos-focus');
-  };
-  const closeSidePanel = () => {
-    panel.classList.remove('open');
-    overlay.classList.remove('open');
-    posLayout.classList.remove('pos-focus');
-  };
-  closeBtn.onclick = closeSidePanel;
-  overlay.onclick = closeSidePanel;
-}
-
 // ─────────────────────────────── ORDERS ──────────────────────────────
 async function fetchOrders() {
   try {
@@ -934,7 +961,15 @@ async function fetchOrders() {
 
     renderOrderList('ordersList', live, 'No live orders');
     renderOrderList('historyList', hist, 'No completed orders');
+    updateOrdersBadge(live.length);
   } catch(e) { console.error('fetchOrders', e); }
+}
+
+function updateOrdersBadge(count) {
+  const badge = document.getElementById('ordersBadge');
+  if (!badge) return;
+  if (count > 0) { badge.textContent = count; badge.style.display = 'inline-flex'; }
+  else { badge.style.display = 'none'; }
 }
 
 function renderOrderList(containerId, orders, emptyMsg) {
@@ -1605,10 +1640,7 @@ function addItemToDraft(item) {
 
 function renderTablesList() {
   const list = document.getElementById('tablesList');
-  // Preserve the hamburger button at the start
-  const hamburger = document.getElementById('posHamburgerBtn');
   list.innerHTML = '';
-  if (hamburger) list.appendChild(hamburger);
 
   for (let i=1;i<=TABLECOUNT;i++) {
     const t = tableOrders[i];
@@ -1643,10 +1675,10 @@ function createCustomTable() {
   nameInput.value = '';
   renderTablesList();
   selectTable(id);
-  // Close side panel so the manager can start adding items right away
+  // Close the settings panel and switch to Dine-In POS so the manager can start adding items right away
   document.getElementById('posSidePanel').classList.remove('open');
   document.getElementById('posSidePanelOverlay').classList.remove('open');
-  document.getElementById('posLayout').classList.remove('pos-focus');
+  switchTab('tables', document.querySelector('.sidebar [data-tab="tables"]'));
 }
 
 function selectTable(n) {
@@ -1881,6 +1913,7 @@ async function loadPendingDineIn() {
 function renderPendingDineIn() {
   const section = document.getElementById('pendingSection');
   const list = document.getElementById('pendingDineInList');
+  updatePosBadge(pendingDineInReqs.length);
   if (!pendingDineInReqs.length) { section.style.display='none'; return; }
   section.style.display = 'block';
   list.innerHTML = '';
@@ -1891,6 +1924,13 @@ function renderPendingDineIn() {
     card.innerHTML=`<div style="font-weight:700;font-size:.85rem;">Table ${esc(req.tableNumber)} — ${esc(req.customerName||'?')}</div><div style="font-size:.75rem;color:var(--muted);margin:.2rem 0 .5rem;">${esc(itemsText)} · ${fmtRs(req.total)}</div><div style="display:flex;gap:.4rem;"><button class="btn btn-xs btn-success" onclick="acceptPending('${req._id}')">✔ Accept</button><button class="btn btn-xs btn-danger" onclick="rejectPending('${req._id}')">✖ Reject</button></div>`;
     list.appendChild(card);
   });
+}
+
+function updatePosBadge(count) {
+  const badge = document.getElementById('posBadge');
+  if (!badge) return;
+  if (count > 0) { badge.textContent = count; badge.style.display = 'inline-flex'; }
+  else { badge.style.display = 'none'; }
 }
 
 async function acceptPending(id) {
