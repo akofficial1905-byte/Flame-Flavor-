@@ -770,7 +770,7 @@ let lastIncomingCount = 0;
 
 // ─────────────────────────────── UTILS ───────────────────────────────
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const today = () => new Date().toISOString().slice(0,10);
+const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
 const fmtRs = n => '₹'+Number(n||0).toLocaleString('en-IN');
 const fmtTime = iso => iso ? new Date(iso).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '';
 const fmtDate = iso => iso ? new Date(iso).toLocaleDateString('en-IN') : '';
