@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Sip and Bite — Digital Menu</title>
+<title>Flame And Flavor — Digital Menu</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://api.qrserver.com https://images.unsplash.com; connect-src 'self';">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
@@ -541,7 +541,7 @@ body.rec-open #helpFab{bottom:calc(var(--cart-h) + 12px + 260px);}
 <!-- CHAT PANEL -->
 <div id="chatPanel">
   <div id="chatHeader">
-    <b>🤖 Sip and Bite Assistant</b>
+    <b>🤖 Flame And Flavor Assistant</b>
     <button id="chatClose">✕</button>
   </div>
   <div id="faqRow">
@@ -829,7 +829,7 @@ function getMenuItemData(name) {
 /* ═══════════════════════════════════════════════════════════
    LOCAL STORAGE — RETURNING CUSTOMER
 ═══════════════════════════════════════════════════════════ */
-const LS_KEY = 'snb_cust_v1';
+const LS_KEY = 'ff_cust_v1';
 function saveCustomerToLS(data) {
   try { localStorage.setItem(LS_KEY, JSON.stringify({name: sanitizeStr(data.name), mobile: sanitizeStr(data.mobile), regno: sanitizeStr(data.regno)})); } catch(e) {}
 }
@@ -1019,7 +1019,7 @@ function toggleDetailsInCart() {
 ═══════════════════════════════════════════════════════════ */
 function setUpiQr(total) {
   const upiId = '7054699905@ptaxis';
-  const link = 'upi://pay?pa=' + encodeURIComponent(upiId) + '&pn=' + encodeURIComponent('Sip and Bite') + '&am=' + encodeURIComponent(total.toFixed(2)) + '&cu=INR&tn=' + encodeURIComponent('Sip and Bite order');
+  const link = 'upi://pay?pa=' + encodeURIComponent(upiId) + '&pn=' + encodeURIComponent('Flame And Flavor') + '&am=' + encodeURIComponent(total.toFixed(2)) + '&cu=INR&tn=' + encodeURIComponent('Flame And Flavor order');
   upiQrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=' + encodeURIComponent(link);
 }
 
@@ -1124,12 +1124,12 @@ function build() {
             }).join('');
           }()) +
         '</svg>' +
-        '<div class="logo-inner">🍛</div>' +
+        '<div class="logo-inner">🔥</div>' +
       '</div>' +
       '<div class="brand-eyebrow">Welcome to</div>' +
-      '<div class="brand-name">Sip and Bite</div>' +
-      '<div class="brand-sub">FAST FOODS</div>' +
-      '<div class="tagline-pill">✨ Taste like <em>"ahh devudaa..."</em></div>' +
+      '<div class="brand-name">Flame And Flavor</div>' +
+      '<div class="brand-sub">KITCHEN &amp; GRILL</div>' +
+      '<div class="tagline-pill">🔥 Flavor, Fired Up</div>' +
       '<div class="cover-stats">' +
         '<div class="cover-stat"><div class="cover-stat-num">5★</div><div class="cover-stat-label">Rating</div></div>' +
         '<div class="stat-divider"></div>' +
@@ -1138,7 +1138,7 @@ function build() {
         '<div class="cover-stat"><div class="cover-stat-num">Fast</div><div class="cover-stat-label">Service</div></div>' +
       '</div>' +
       '<button class="cover-cta" onclick="go(1)">Start Your Order →</button>' +
-      '<div class="cover-phone">📞 <span>+91-6302618096</span></div>' +
+      '<div class="cover-phone">📞 <span>+91 88815-81515</span></div>' +
     '</div>' +
     '<div class="swipe-hint">' +
       '<span class="swipe-arrow"><span class="arrow">←</span> Prev</span>' +
@@ -1608,7 +1608,7 @@ chatClose_.onclick = function() { chatPanel.style.display = 'none'; };
 function initChatbot() {
   if (chatMessages.dataset.ready) return;
   chatMessages.dataset.ready = '1';
-  addMsg("Hi! 👋 I'm your Sip and Bite assistant. Ask me about menu suggestions, spicy food, veg options, budget picks, delivery, or payment help.");
+  addMsg("Hi! 👋 I'm your Flame And Flavor assistant. Ask me about menu suggestions, spicy food, veg options, budget picks, delivery, or payment help.");
   document.querySelectorAll('.faqBtn').forEach(function(btn) {
     btn.onclick = function() { handleChat(btn.dataset.q); };
   });
@@ -1696,7 +1696,7 @@ async function actuallyPlaceOrder(payload, totalAmount, paymentMethodLabel) {
     // Prefer the server-computed total (reflects GST / delivery-takeaway charges
     // applied server-side per current manager settings) over the client estimate.
     const finalTotal = (data.order && typeof data.order.total === 'number') ? data.order.total : totalAmount;
-    showSuccessAndReset('Your order has been sent to Sip and Bite', note, finalTotal, paymentMethodLabel);
+    showSuccessAndReset('Your order has been sent to Flame And Flavor', note, finalTotal, paymentMethodLabel);
     return true;
   } catch(e) { alert('Server error. Please try again.'); return false; }
 }
