@@ -130,6 +130,8 @@
     .tables-row{display:flex;flex-wrap:wrap;gap:.5rem;padding:.75rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0;align-items:center;}
     .table-btn{padding:.5rem .9rem;background:#fff;border:2px solid var(--border);border-radius:7px;cursor:pointer;text-align:center;transition:all .15s;min-width:80px;}
     .table-btn:hover{border-color:var(--amber);}
+    .table-btn.occupied{background:#FEF3C7;border-color:var(--warn);}
+    .table-btn.occupied .tn{color:#92400E;}
     .table-btn.active{background:var(--navy);color:#fff;border-color:var(--navy);}
     .table-btn.custom-table{border-style:dashed;}
     .table-btn .tn{font-size:1rem;font-weight:700;}
@@ -272,12 +274,12 @@
     <!-- SIDEBAR (overlay drawer, hidden by default, opened via header hamburger) -->
     <div class="sidebar">
       <div class="nav-label">Menu</div>
-      <button class="tab-btn" data-tab="orders" onclick="switchTab('orders',this)">📋 Orders <span class="nav-badge" id="ordersBadge">0</span></button>
-      <button class="tab-btn" data-tab="dashboard" onclick="switchTab('dashboard',this)">📊 Dashboard</button>
-      <button class="tab-btn" data-tab="analytics" onclick="switchTab('analytics',this)">📈 Analytics</button>
       <button class="tab-btn active" data-tab="tables" onclick="switchTab('tables',this)">🍽️ Dine-In POS <span class="nav-badge" id="posBadge">0</span></button>
       <button class="tab-btn" data-tab="lookup" onclick="switchTab('lookup',this)">🔍 Look Up</button>
+      <button class="tab-btn" data-tab="dashboard" onclick="switchTab('dashboard',this)">📊 Dashboard</button>
+      <button class="tab-btn" data-tab="analytics" onclick="switchTab('analytics',this)">📈 Analytics</button>
       <button class="tab-btn" data-tab="inventory" onclick="switchTab('inventory',this)">📦 Inventory</button>
+      <button class="tab-btn" data-tab="orders" onclick="switchTab('orders',this)">📋 Orders <span class="nav-badge" id="ordersBadge">0</span></button>
       <div style="flex:1;"></div>
     </div>
 
@@ -984,10 +986,45 @@ document.getElementById('logoutBtn').onclick = () => {
 };
 
 // ─────────────────────────────── INIT ────────────────────────────────
+const yesterday = () => { const d = new Date(); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); };
+
+function prefillAnalyticsDates() {
+  const t = today();
+  ['summaryFrom','summaryTo','dailyFrom','dailyTo','itemsFrom','itemsTo','catFrom','catTo','custFrom','custTo','payFrom','payTo','topFrom','topTo','hourlyDate'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.value) el.value = t;
+  });
+  const c1 = document.getElementById('comp1'); if (c1 && !c1.value) c1.value = yesterday();
+  const c2 = document.getElementById('comp2'); if (c2 && !c2.value) c2.value = t;
+}
+
+// Each analytics sub-tab auto-loads today's data the first time it's viewed, so it never
+// looks empty by default — but once loaded, it's left alone until the manager picks a
+// different date range and clicks Generate themselves.
+const analyticsAutoLoaded = new Set();
+function ensureAnalyticsLoaded(section) {
+  if (analyticsAutoLoaded.has(section)) return;
+  analyticsAutoLoaded.add(section);
+  const loaders = {
+    summary: generateSummaryReport,
+    daily: generateDailyReport,
+    items: generateItemsAnalytics,
+    categories: generateCategoryAnalytics,
+    customers: generateCustomerAnalytics,
+    payments: generatePaymentAnalytics,
+    hourly: generateHourlyAnalytics,
+    comparison: generateComparison,
+    topitems: generateTopItems
+  };
+  const fn = loaders[section];
+  if (fn) fn();
+}
+
 async function initManager() {
   initSocket();
   document.getElementById('datePicker').value = today();
   document.getElementById('dashboardDate').value = today();
+  prefillAnalyticsDates();
   await loadInventory();
   await loadMenuForTables();
   await loadSettings();
@@ -998,6 +1035,7 @@ async function initManager() {
   await fetchOrders();
   await renderDashboard();
   await loadPendingDineIn();
+  ensureAnalyticsLoaded('summary'); // Summary is the default-visible analytics sub-tab
   wireNavSidebar();
   wireSettingsPanel();
   const silenceBtn = document.getElementById('silenceAlarmBtn');
@@ -1017,6 +1055,7 @@ function switchAnalytics(section, el) {
   document.getElementById(section+'Analytics').classList.add('active');
   document.querySelectorAll('.analytics-item').forEach(b => b.classList.remove('active'));
   if (el) el.classList.add('active');
+  ensureAnalyticsLoaded(section);
 }
 
 // ─────────────────────────────── MODALS ──────────────────────────────
@@ -1117,7 +1156,9 @@ function renderOrderList(containerId, orders, emptyMsg) {
 function buildOrderCard(o) {
   const div = document.createElement('div');
   const isDelivered = o.status === 'delivered';
+  const isNew = o.status === 'incoming';
   div.className = 'order-card' + (isDelivered ? ' delivered' : '');
+  if (isNew) div.style.borderLeftColor = 'var(--warn)';
   div.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:.5rem;">
       <div style="display:flex;gap:.35rem;flex-wrap:wrap;">
@@ -1128,10 +1169,10 @@ function buildOrderCard(o) {
       </div>
       <span style="font-size:.7rem;color:var(--muted);">${fmtTime(o.createdAt)} · ${fmtDate(o.createdAt)}</span>
     </div>
-    <div style="font-weight:700;margin-bottom:.3rem;">${esc(o.customerName||'No name')} — <span style="color:var(--amber);">${fmtRs(o.total)}</span></div>
+    <div style="font-weight:700;margin-bottom:.3rem;${isNew?'background:#FEF9C3;display:inline-block;padding:3px 9px;border-radius:7px;':''}">${esc(o.customerName||'No name')} — <span style="color:${isNew?'#92400E':'var(--amber)'};font-weight:800;">${fmtRs(o.total)}</span></div>
     ${o.mobile?`<div style="font-size:.75rem;color:var(--muted);">📞 ${esc(o.mobile)}</div>`:''}
     ${o.tableNumber?`<div style="font-size:.75rem;color:var(--muted);">🪑 Table ${esc(o.tableNumber)}</div>`:''}
-    <div style="font-size:.78rem;color:var(--muted);margin:.3rem 0 .6rem;">${esc((o.items||[]).map(i=>i.name+' x'+i.qty).join(', ')||'No items')}</div>
+    <div style="font-size:.78rem;color:${isNew?'#92400E':'var(--muted)'};margin:.3rem 0 .6rem;${isNew?'background:#FFFBEB;padding:6px 9px;border-radius:7px;border-left:3px solid var(--warn);font-weight:600;':''}">${esc((o.items||[]).map(i=>i.name+' x'+i.qty).join(', ')||'No items')}</div>
     <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
       <button class="btn btn-xs btn-primary" onclick="quickPrintReceipt('${o._id}')">🖨 Print</button>
       <button class="btn btn-xs btn-info" onclick="quickPrintKOT('${o._id}')">🎫 KOT</button>
@@ -1933,8 +1974,10 @@ function renderTablesList() {
   for (let i=1;i<=TABLECOUNT;i++) {
     const t = tableOrders[i];
     const total = (t.items||[]).reduce((s,it)=>s+it.price*it.qty,0) + Number(t.extraCharge||0);
+    const isSelected = String(selectedTable)===String(i);
+    const isOccupied = (t.items||[]).length > 0;
     const btn = document.createElement('button');
-    btn.className = 'table-btn'+(String(selectedTable)===String(i)?' active':'');
+    btn.className = 'table-btn' + (isSelected ? ' active' : (isOccupied ? ' occupied' : ''));
     btn.innerHTML = `<div class="tn">T${i}</div><div class="ts">${esc(t.customerName||'Empty')}</div><div class="ts">₹${total}</div>`;
     btn.onclick = () => selectTable(i);
     list.appendChild(btn);
@@ -1943,8 +1986,10 @@ function renderTablesList() {
   customTableIds.forEach(id => {
     const t = tableOrders[id] || { items: [], extraCharge: 0, customerName: '' };
     const total = (t.items||[]).reduce((s,it)=>s+it.price*it.qty,0) + Number(t.extraCharge||0);
+    const isSelected = String(selectedTable)===String(id);
+    const isOccupied = (t.items||[]).length > 0;
     const btn = document.createElement('button');
-    btn.className = 'table-btn custom-table'+(String(selectedTable)===String(id)?' active':'');
+    btn.className = 'table-btn custom-table' + (isSelected ? ' active' : (isOccupied ? ' occupied' : ''));
     btn.innerHTML = `<div class="tn">${esc(id)}</div><div class="ts">${esc(t.customerName||'Walk-in')}</div><div class="ts">₹${total}</div>`;
     btn.onclick = () => selectTable(id);
     list.appendChild(btn);
