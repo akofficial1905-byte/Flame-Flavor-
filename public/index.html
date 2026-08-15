@@ -1058,15 +1058,22 @@ function resetAllFields() {
 ═══════════════════════════════════════════════════════════ */
 function getCatIcon(cat) {
   const c = String(cat || '').toLowerCase();
+  if (c.includes('bucket'))                          return '🪣';
+  if (c.includes('khabsa') || c.includes('combo') || c.includes('platter')) return '🍱';
+  if (c.includes('meal'))                            return '🍔';
   if (c.includes('burger'))                          return '🍔';
   if (c.includes('pizza'))                           return '🍕';
+  if (c.includes('main course') || c.includes('curry') || c.includes('gravy')) return '🍛';
   if (c.includes('rice') || c.includes('biryani'))   return '🍚';
+  if (c.includes('bread') || c.includes('roti') || c.includes('naan') || c.includes('parantha')) return '🫓';
   if (c.includes('noodle') || c.includes('pasta') || c.includes('chinese')) return '🍜';
-  if (c.includes('starter') || c.includes('snack'))  return '🍟';
+  if (c.includes('starter'))                         return '🍢';
+  if (c.includes('snack') || c.includes('side'))      return '🍟';
   if (c.includes('drink') || c.includes('juice') || c.includes('beverage')) return '🥤';
   if (c.includes('dessert') || c.includes('sweet'))  return '🍨';
   if (c.includes('wrap') || c.includes('roll'))      return '🌯';
   if (c.includes('sandwich'))                        return '🥪';
+  if (c.includes('special'))                         return '⭐';
   if (c.includes('chicken'))                         return '🍗';
   if (c.includes('veg'))                             return '🥗';
   return '🍽';
@@ -1129,7 +1136,7 @@ function build() {
       '<div class="brand-eyebrow">Welcome to</div>' +
       '<div class="brand-name">Flame And Flavor</div>' +
       '<div class="brand-sub">KITCHEN &amp; GRILL</div>' +
-      '<div class="tagline-pill">Where Flavor Meets Fire🔥</div>' +
+      '<div class="tagline-pill">🔥 Flavor, Fired Up</div>' +
       '<div class="cover-stats">' +
         '<div class="cover-stat"><div class="cover-stat-num">5★</div><div class="cover-stat-label">Rating</div></div>' +
         '<div class="stat-divider"></div>' +
@@ -1138,7 +1145,7 @@ function build() {
         '<div class="cover-stat"><div class="cover-stat-num">Fast</div><div class="cover-stat-label">Service</div></div>' +
       '</div>' +
       '<button class="cover-cta" onclick="go(1)">Start Your Order →</button>' +
-      '<div class="cover-phone">📞 <span>+91 88815-81515</span></div>' +
+      '<div class="cover-phone">📞 <span>+91-6302618096</span></div>' +
     '</div>' +
     '<div class="swipe-hint">' +
       '<span class="swipe-arrow"><span class="arrow">←</span> Prev</span>' +
@@ -1233,7 +1240,7 @@ function build() {
     catPageIndex += Math.ceil(items.length / perPage);
   });
   const contentsPage = document.createElement('section');
-  contentsPage.className = 'page';
+  contentsPage.className = 'page menu-page';
   contentsPage.innerHTML =
     '<div class="page-header-bar"><span style="font-size:1.5rem;">🍽</span><h1 class="page-header">Our Menu</h1></div>' +
     '<p class="page-sub">Tap a category or use ← → arrows to browse</p>' +
