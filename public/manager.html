@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Sip and Bite - Manager Portal</title>
+  <title>Flame And Flavor - Manager Portal</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
@@ -207,6 +207,19 @@
     .ledger-badge{font-size:.72rem;font-weight:700;padding:.3rem .6rem;border-radius:6px;margin-bottom:.5rem;display:inline-block;}
     .ledger-credit{background:#D1FAE5;color:#065F46;}
     .ledger-dues{background:#FEE2E2;color:#991B1B;}
+
+    /* ── NEW-ORDER POPUP ALERT STACK ── */
+    #orderAlertStack{position:fixed;top:16px;right:16px;z-index:1200;display:flex;flex-direction:column;gap:.6rem;max-width:340px;width:calc(100vw - 32px);}
+    @keyframes popupPulse{0%,100%{box-shadow:0 10px 30px rgba(0,0,0,.25);}50%{box-shadow:0 10px 42px rgba(239,68,68,.5);}}
+    .alert-popup{background:#fff;border-radius:10px;padding:.9rem 1rem;animation:popupPulse 1.4s ease-in-out infinite;}
+    .alert-popup-close{background:var(--surface2);color:var(--navy);border:none;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:.8rem;flex-shrink:0;}
+
+    /* ── COMPACT POS BILLING PANEL (no scrolling needed) ── */
+    .pos-panel.pos-billing{display:flex;flex-direction:column;overflow:hidden;}
+    .pos-billing-actions{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.7rem;flex-shrink:0;}
+    .pos-customer-grid{display:grid;grid-template-columns:1.3fr 1fr .6fr;gap:.5rem;margin-bottom:.5rem;flex-shrink:0;}
+    #tableDraftItems{flex:1;min-height:0;overflow-y:auto;margin-bottom:.6rem;}
+    #posBillSummary{flex-shrink:0;background:var(--surface2);padding:.9rem 1rem;border-radius:10px;border:1px solid var(--border);}
   </style>
 </head>
 <body>
@@ -215,7 +228,7 @@
 <div id="loginOverlay">
   <div class="login-card">
     <h2 style="font-size:1.5rem;font-weight:700;color:var(--navy);text-align:center;margin-bottom:.25rem;">Manager Login</h2>
-    <p style="font-size:.85rem;color:var(--muted);text-align:center;margin-bottom:1.25rem;">Sip and Bite</p>
+    <p style="font-size:.85rem;color:var(--muted);text-align:center;margin-bottom:1.25rem;">Flame And Flavor</p>
     <form id="loginForm">
       <div class="form-group"><label class="form-label">Username</label><input id="loginUser" type="text" class="form-input" placeholder="Username" required autocomplete="username"/></div>
       <div class="form-group"><label class="form-label">Password</label><input id="loginPass" type="password" class="form-input" placeholder="Password" required autocomplete="current-password"/></div>
@@ -232,7 +245,7 @@
     <div style="display:flex;align-items:center;gap:.75rem;">
       <button id="navToggleBtn" class="hamburger-btn on-dark" title="Menu" type="button"><span></span><span></span><span></span></button>
       <div>
-        <h1>Sip and Bite</h1>
+        <h1>FLAME AND FLAVOR</h1>
         <p>Manager Portal — Orders · Analytics · POS</p>
       </div>
     </div>
@@ -496,48 +509,49 @@
           </div>
 
           <!-- Draft bill -->
-          <div class="pos-panel" style="display:flex;flex-direction:column;">
-            <div style="font-size:1.2rem;font-weight:800;margin-bottom:.75rem;color:var(--navy);" id="selectedTableTitle">Table 1</div>
-
-            <div id="tableLedgerBadge"></div>
-
-            <div class="pos-section-label">Customer</div>
-            <!-- Customer autocomplete -->
-            <div class="form-group autocomplete-wrap" style="margin-bottom:.5rem;">
-              <label class="form-label">Customer Name</label>
-              <input id="tableCustomerName" type="text" class="form-input" placeholder="Name" oninput="handleCustomerAutoComplete(this,'tableMobileField','tableCustomerName')" autocomplete="off"/>
-              <div class="autocomplete-list" id="nameAcList"></div>
-            </div>
-            <div class="form-group autocomplete-wrap" style="margin-bottom:.5rem;">
-              <label class="form-label">Mobile</label>
-              <input id="tableCustomerMobile" type="text" id2="tableMobileField" class="form-input" placeholder="Phone" oninput="handleCustomerAutoComplete(this,'tableCustomerName','tableCustomerMobile'); loadTableLedger();" autocomplete="off"/>
-              <div class="autocomplete-list" id="mobileAcList"></div>
-            </div>
-            <div class="form-group" style="margin-bottom:1rem;">
-              <label class="form-label">Guests</label>
-              <input id="tableGuestCount" type="number" class="form-input" min="1" value="1"/>
+          <div class="pos-panel pos-billing">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;flex-shrink:0;">
+              <div style="font-size:1.15rem;font-weight:800;color:var(--navy);" id="selectedTableTitle">Table 1</div>
             </div>
 
-            <div class="pos-section-label">Items</div>
-            <div id="tableDraftItems" style="flex:1;overflow-y:auto;min-height:80px;max-height:220px;margin-bottom:.75rem;"></div>
+            <!-- Quick actions moved to the top so they're always visible -->
+            <div class="pos-billing-actions">
+              <button class="btn btn-secondary btn-sm" onclick="clearTableOrder()">🗑 Clear</button>
+              <button class="btn btn-warning btn-sm" onclick="saveDraftTable()">💾 Draft</button>
+              <button class="btn btn-info btn-sm" onclick="printTableKOT()">🎫 KOT</button>
+              <button class="btn btn-success btn-sm" onclick="sendPosBillWhatsapp()">💬 WhatsApp</button>
+            </div>
+            <button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:.8rem;flex-shrink:0;" onclick="finalizeTableOrder()">🖨 Save &amp; Print Bill</button>
 
-            <div class="form-group" style="margin-bottom:.75rem;">
+            <div id="tableLedgerBadge" style="flex-shrink:0;"></div>
+
+            <!-- Compact customer row -->
+            <div class="pos-customer-grid">
+              <div class="form-group autocomplete-wrap" style="margin-bottom:0;">
+                <label class="form-label">Name</label>
+                <input id="tableCustomerName" type="text" class="form-input" placeholder="Name" oninput="handleCustomerAutoComplete(this,'tableMobileField','tableCustomerName')" autocomplete="off"/>
+                <div class="autocomplete-list" id="nameAcList"></div>
+              </div>
+              <div class="form-group autocomplete-wrap" style="margin-bottom:0;">
+                <label class="form-label">Mobile</label>
+                <input id="tableCustomerMobile" type="text" id2="tableMobileField" class="form-input" placeholder="Phone" oninput="handleCustomerAutoComplete(this,'tableCustomerName','tableCustomerMobile'); loadTableLedger();" autocomplete="off"/>
+                <div class="autocomplete-list" id="mobileAcList"></div>
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">Guests</label>
+                <input id="tableGuestCount" type="number" class="form-input" min="1" value="1"/>
+              </div>
+            </div>
+
+            <div class="pos-section-label" style="margin-bottom:.4rem;flex-shrink:0;">Items</div>
+            <div id="tableDraftItems"></div>
+
+            <div class="form-group" style="margin-bottom:.6rem;flex-shrink:0;">
               <label class="form-label">Extra Charge (delivery/misc)</label>
               <input id="tableExtraCharge" type="number" class="form-input" min="0" value="0" oninput="onTableExtraChargeInput()"/>
             </div>
 
-            <div style="background:var(--surface2);padding:.9rem;border-radius:9px;text-align:right;margin-bottom:.9rem;border:1px solid var(--border);">
-              <div style="font-size:.7rem;color:var(--muted);">Total</div>
-              <div style="font-size:1.6rem;font-weight:800;color:var(--navy);">₹<span id="tableDraftTotal">0</span></div>
-            </div>
-
-            <!-- 4 action buttons -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;">
-              <button class="btn btn-secondary btn-sm" onclick="clearTableOrder()">🗑 Clear</button>
-              <button class="btn btn-warning btn-sm" onclick="saveDraftTable()">💾 Draft</button>
-              <button class="btn btn-info btn-sm" onclick="printTableKOT()">🎫 KOT</button>
-              <button class="btn btn-success btn-sm" onclick="finalizeTableOrder()">🖨 Save & Print</button>
-            </div>
+            <div id="posBillSummary"></div>
           </div>
         </div>
       </div>
@@ -581,6 +595,9 @@
 
 <!-- ═══════════════ MAIN NAV OVERLAY (backdrop for the sidebar drawer) ═══════════════ -->
 <div id="navOverlay"></div>
+
+<!-- ═══════════════ NEW-ORDER POPUP ALERT STACK ═══════════════ -->
+<div id="orderAlertStack"></div>
 
 <!-- ═══════════════ POS SIDE PANEL (hamburger / settings gear — GST, charges, custom tables) ═══════════════ -->
 <div id="posSidePanelOverlay"></div>
@@ -737,6 +754,7 @@ let currentLedgerBalance = 0;
 let appSettings = { gstEnabled:false, gstin:'', gstPercent:5, deliveryChargeEnabled:false, deliveryCharge:0, takeawayChargeEnabled:false, takeawayCharge:0 };
 
 let serviceRequests = [];
+let lastIncomingCount = 0;
 
 // ─────────────────────────────── UTILS ───────────────────────────────
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -769,7 +787,11 @@ function initSocket() {
   if (socket) return;
   try {
     socket = io();
-    socket.on('newOrder', () => { fetchOrders(); triggerNewOrderAlert(); });
+    socket.on('newOrder', (order) => {
+      fetchOrders();
+      triggerNewOrderAlert();
+      if (order && order.orderType !== 'dinein') showOrderPopup(order);
+    });
     socket.on('orderUpdated', () => fetchOrders());
     socket.on('serviceRequest', req => { serviceRequests.unshift(req); renderServiceRequests(); });
     socket.on('tableDraftUpdated', payload => {
@@ -785,40 +807,130 @@ function initSocket() {
       customTableIds = customTableIds.filter(id => id !== payload.tableNumber);
       renderTablesList();
     });
-    socket.on('pendingDineIn', () => { loadPendingDineIn(); triggerNewOrderAlert(); });
+    socket.on('pendingDineIn', (req) => { loadPendingDineIn(); triggerNewOrderAlert(); showPendingDineInPopup(req); });
   } catch(e) { console.warn('Socket unavailable', e); }
 }
 
-// ─────────────────────────────── NEW ORDER SOUND ALERT (10s/20s escalation) ──
-let pendingAlertTimers = [];
-function triggerNewOrderAlert() {
-  playAlertBeep(1);
-  clearAlertTimers();
-  pendingAlertTimers.push(setTimeout(() => playAlertBeep(2), 10000));
-  pendingAlertTimers.push(setTimeout(() => playAlertBeep(3), 20000));
-}
-function clearAlertTimers() {
-  pendingAlertTimers.forEach(t => clearTimeout(t));
-  pendingAlertTimers = [];
-}
-function playAlertBeep(intensity) {
+// ─────────────────────────────── NEW ORDER SOUND ALERT ────────────────
+// Timeline: 5s chime → 15s hold → 30s louder chime → 10s hold → continuous chime until acted upon.
+let orderAlertActive = false;
+let orderAlertTimeouts = [];
+let orderAlertIntervalId = null;
+
+function playChimeTone(big) {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const beeps = intensity === 1 ? 1 : intensity === 2 ? 2 : 3;
-    for (let i = 0; i < beeps; i++) {
+    const notes = big ? [880, 1108, 880, 1108] : [784, 988];
+    const peak = big ? 0.6 : 0.42;
+    notes.forEach((freq, i) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.value = intensity === 3 ? 1100 : 880;
-      gain.gain.setValueAtTime(0.001, ctx.currentTime);
-      const start = ctx.currentTime + i * 0.28;
-      gain.gain.exponentialRampToValueAtTime(0.25, start + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.22);
+      osc.frequency.value = freq;
+      const start = ctx.currentTime + i * 0.18;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(peak, start + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.16);
       osc.connect(gain); gain.connect(ctx.destination);
-      osc.start(start); osc.stop(start + 0.25);
-    }
+      osc.start(start); osc.stop(start + 0.19);
+    });
   } catch(e) { /* audio not available */ }
 }
+
+function scheduleChimeWindow(durationMs, big) {
+  playChimeTone(big);
+  const id = setInterval(() => playChimeTone(big), 750);
+  orderAlertTimeouts.push(setTimeout(() => clearInterval(id), durationMs));
+}
+
+function startContinuousChime() {
+  playChimeTone(true);
+  orderAlertIntervalId = setInterval(() => playChimeTone(true), 900);
+}
+
+function triggerNewOrderAlert() {
+  if (orderAlertActive) return; // already escalating — let the existing schedule run
+  orderAlertActive = true;
+  scheduleChimeWindow(5000, false);                                  // phase 1: 0s–5s chime
+  orderAlertTimeouts.push(setTimeout(() => {                         // phase 2: starts at 20s (5s + 15s hold)
+    scheduleChimeWindow(30000, true);                                // 20s–50s louder chime
+  }, 5000 + 15000));
+  orderAlertTimeouts.push(setTimeout(() => {                         // phase 3: starts at 65s (50s + 10s hold)
+    startContinuousChime();                                          // continuous until cleared
+  }, 5000 + 15000 + 30000 + 10000));
+}
+
+function clearAlertTimers() {
+  orderAlertTimeouts.forEach(t => clearTimeout(t));
+  orderAlertTimeouts = [];
+  if (orderAlertIntervalId) { clearInterval(orderAlertIntervalId); orderAlertIntervalId = null; }
+  orderAlertActive = false;
+}
+
+// Call after every orders/pending refresh — stops the alarm once nothing is left unactioned,
+// so it always runs "until acted upon" without needing to track individual order IDs.
+function refreshAlertState(incomingCount, pendingCount) {
+  const outstanding = (incomingCount||0) + (pendingCount||0);
+  if (outstanding === 0) clearAlertTimers();
+}
+
+// ─────────────────────────────── NEW-ORDER / NEW-REQUEST POPUPS ──────
+function showOrderPopup(order) {
+  const stack = document.getElementById('orderAlertStack');
+  if (!stack || !order || !order._id) return;
+  if (document.getElementById('orderPopup_' + order._id)) return;
+  const card = document.createElement('div');
+  card.id = 'orderPopup_' + order._id;
+  card.className = 'alert-popup';
+  card.style.border = '2px solid var(--red)';
+  card.style.borderLeft = '6px solid var(--red)';
+  card.style.boxShadow = '0 10px 30px rgba(0,0,0,.25)';
+  const itemsText = (order.items||[]).map(i=>i.name+' x'+i.qty).join(', ');
+  card.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:start;gap:.5rem;">
+      <div style="min-width:0;">
+        <div style="font-weight:800;color:var(--red);font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.3rem;">🔔 New ${esc((order.orderType||'').toUpperCase())} Order</div>
+        <div style="font-weight:700;font-size:.92rem;">${esc(order.customerName||'Customer')}</div>
+        <div style="font-size:.76rem;color:var(--muted);margin-top:.15rem;">${esc(itemsText)}</div>
+        <div style="font-size:.85rem;font-weight:700;color:var(--amber);margin-top:.3rem;">₹${order.total||0}</div>
+      </div>
+      <button class="alert-popup-close" onclick="dismissOrderPopup('${order._id}')">✕</button>
+    </div>
+    <button class="btn btn-primary btn-sm" style="width:100%;margin-top:.6rem;" onclick="viewOrderFromPopup('${order._id}')">View in Orders</button>`;
+  stack.appendChild(card);
+}
+function dismissOrderPopup(id) { const el = document.getElementById('orderPopup_' + id); if (el) el.remove(); }
+function viewOrderFromPopup(id) {
+  dismissOrderPopup(id);
+  switchTab('orders', document.querySelector('.sidebar [data-tab="orders"]'));
+}
+window.dismissOrderPopup = dismissOrderPopup;
+window.viewOrderFromPopup = viewOrderFromPopup;
+
+function showPendingDineInPopup(req) {
+  const stack = document.getElementById('orderAlertStack');
+  if (!stack || !req || !req._id) return;
+  if (document.getElementById('dineinPopup_' + req._id)) return;
+  const card = document.createElement('div');
+  card.id = 'dineinPopup_' + req._id;
+  card.className = 'alert-popup';
+  card.style.border = '2px solid var(--amber)';
+  card.style.borderLeft = '6px solid var(--amber)';
+  card.style.boxShadow = '0 10px 30px rgba(0,0,0,.25)';
+  const itemsText = (req.items||[]).map(i=>i.name+' ×'+i.qty).join(', ');
+  card.innerHTML = `
+    <div style="font-weight:800;color:var(--amber);font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.3rem;">🔔 New Dine-In — Table ${esc(req.tableNumber)}</div>
+    <div style="font-weight:700;font-size:.92rem;">${esc(req.customerName||'Guest')}</div>
+    <div style="font-size:.76rem;color:var(--muted);margin:.15rem 0 .3rem;">${esc(itemsText)}</div>
+    <div style="font-size:.85rem;font-weight:700;color:var(--amber);margin-bottom:.6rem;">₹${req.total||0}</div>
+    <div style="display:flex;gap:.5rem;">
+      <button class="btn btn-success btn-sm" style="flex:1;" onclick="acceptPending('${req._id}')">✔ Accept</button>
+      <button class="btn btn-danger btn-sm" style="flex:1;" onclick="rejectPending('${req._id}')">✖ Reject</button>
+    </div>`;
+  stack.appendChild(card);
+}
+function dismissDineInPopup(id) { const el = document.getElementById('dineinPopup_' + id); if (el) el.remove(); }
+window.dismissDineInPopup = dismissDineInPopup;
 
 // ─────────────────────────────── LOGIN ───────────────────────────────
 document.getElementById('loginForm').onsubmit = async e => {
@@ -962,6 +1074,8 @@ async function fetchOrders() {
     renderOrderList('ordersList', live, 'No live orders');
     renderOrderList('historyList', hist, 'No completed orders');
     updateOrdersBadge(live.length);
+    lastIncomingCount = live.filter(o => o.status === 'incoming').length;
+    refreshAlertState(lastIncomingCount, pendingDineInReqs.length);
   } catch(e) { console.error('fetchOrders', e); }
 }
 
@@ -1015,12 +1129,14 @@ function buildOrderCard(o) {
 
 async function markDelivered(id) {
   await apiFetch(`/api/orders/${id}/status`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status:'delivered'}) });
+  dismissOrderPopup(id);
   fetchOrders();
 }
 
 async function updateStatus(id, status) {
   if (!status) return;
   await apiFetch(`/api/orders/${id}/status`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status}) });
+  if (status !== 'incoming') dismissOrderPopup(id);
   fetchOrders();
 }
 
@@ -1029,6 +1145,7 @@ async function deleteOrder(id) {
   if (!confirm('Delete this order permanently? This cannot be undone.')) return;
   try {
     await apiFetch(`/api/orders/${id}`, { method:'DELETE' });
+    dismissOrderPopup(id);
     fetchOrders();
     performLookup();
   } catch(e) { alert('Could not delete order: '+e.message); }
@@ -1082,7 +1199,7 @@ async function openPrint(orderId) {
 function buildReceiptText(o) {
   const lines = [
     '================================',
-    '  Sip and Bite  ',
+    '     FLAME AND FLAVOR     ',
     '================================',
     `Order ID : ${o._id}`,
     `Type     : ${(o.orderType||'').toUpperCase()}`,
@@ -1194,6 +1311,11 @@ async function saveEditOrder(orderId, origItems) {
 let dashCharts = {};
 
 async function renderDashboard() {
+  // Immediate feedback so the tab never looks frozen while data loads
+  document.getElementById('dashboardInsights').innerHTML = '<div style="padding:.3rem 0;">⏳ Loading latest data…</div>';
+  ['kpi-revenue','kpi-orders','kpi-avg','kpi-peak','kpi-dinein','kpi-takeaway','kpi-gst','kpi-extra'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.textContent = '…';
+  });
   try {
     const date = document.getElementById('dashboardDate').value||today();
     const period = document.getElementById('dashboardPeriod').value;
@@ -1275,8 +1397,14 @@ async function getOrdersRange(fromDate, toDate) {
   return allOrders;
 }
 
+function setTableLoading(tbodyId, colspan) {
+  const el = document.getElementById(tbodyId);
+  if (el) el.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center;color:var(--muted);padding:2rem;">⏳ Loading…</td></tr>`;
+}
+
 let _lastSummary = { rows: [], from:'', to:'' };
 async function generateSummaryReport() {
+  setTableLoading('summaryBody', 3);
   const from = document.getElementById('summaryFrom').value || today();
   const to   = document.getElementById('summaryTo').value   || today();
   const orders = await getOrdersRange(from, to);
@@ -1312,6 +1440,7 @@ function exportSummaryExcel() {
 
 let _lastDaily = { rows: [], from:'', to:'' };
 async function generateDailyReport() {
+  setTableLoading('dailyBody', 6);
   const from = document.getElementById('dailyFrom').value || today();
   const to   = document.getElementById('dailyTo').value   || today();
   const fromD = new Date(from), toD = new Date(to);
@@ -1359,6 +1488,7 @@ async function exportOrderWiseExcel() {
 
 let _lastItems = { rows: [], from:'', to:'' };
 async function generateItemsAnalytics() {
+  setTableLoading('itemsBody', 5);
   const from = document.getElementById('itemsFrom').value||today();
   const to   = document.getElementById('itemsTo').value||today();
   const orders = await getOrdersRange(from, to);
@@ -1397,6 +1527,7 @@ function exportItemsExcel() {
 }
 
 async function generateCategoryAnalytics() {
+  setTableLoading('catBody', 4);
   const from = document.getElementById('catFrom').value||today();
   const to   = document.getElementById('catTo').value||today();
   const orders = await getOrdersRange(from, to);
@@ -1419,6 +1550,7 @@ async function generateCategoryAnalytics() {
 }
 
 async function generateCustomerAnalytics() {
+  setTableLoading('custBody', 5);
   const from = document.getElementById('custFrom').value||today();
   const to   = document.getElementById('custTo').value||today();
   const orders = await getOrdersRange(from, to);
@@ -1440,6 +1572,7 @@ async function generateCustomerAnalytics() {
 }
 
 async function generatePaymentAnalytics() {
+  setTableLoading('payBody', 4);
   const from = document.getElementById('payFrom').value||today();
   const to   = document.getElementById('payTo').value||today();
   const orders = await getOrdersRange(from, to);
@@ -1458,6 +1591,7 @@ async function generatePaymentAnalytics() {
 }
 
 async function generateHourlyAnalytics() {
+  setTableLoading('hourlyBody', 4);
   const date = document.getElementById('hourlyDate').value||today();
   const orders = await fetchOrders2Date(date);
   const hourly = Array(24).fill(null).map(()=>({orders:0,rev:0}));
@@ -1477,6 +1611,7 @@ async function generateComparison() {
   const d1 = document.getElementById('comp1').value;
   const d2 = document.getElementById('comp2').value;
   if (!d1||!d2) { alert('Select both dates'); return; }
+  document.getElementById('compResult').innerHTML = '<div style="text-align:center;color:var(--muted);padding:2rem;">⏳ Loading comparison…</div>';
   const [o1, o2] = await Promise.all([fetchOrders2Date(d1), fetchOrders2Date(d2)]);
   const summary = dt => ({ orders: dt.length, rev: dt.reduce((s,o)=>s+(o.total||0),0) });
   const s1 = summary(o1); const s2 = summary(o2);
@@ -1496,6 +1631,7 @@ async function generateComparison() {
 }
 
 async function generateTopItems() {
+  setTableLoading('topItemsBody', 4);
   const from = document.getElementById('topFrom').value||today();
   const to   = document.getElementById('topTo').value||today();
   const orders = await getOrdersRange(from, to);
@@ -1699,7 +1835,13 @@ function selectTable(n) {
 function renderTableDraft() {
   const t = tableOrders[selectedTable];
   const itemsTotal = (t.items||[]).reduce((s,it)=>s+it.price*it.qty,0);
-  const total = itemsTotal + Number(t.extraCharge||0);
+  const extra = Number(t.extraCharge||0);
+  const base = itemsTotal + extra;
+  const gstOn = !!appSettings.gstEnabled;
+  const gstPct = Number(appSettings.gstPercent||0);
+  const gstAmt = gstOn ? Math.round(base * (gstPct/100) * 100) / 100 : 0;
+  const total = Math.round((base + gstAmt) * 100) / 100;
+
   const el = document.getElementById('tableDraftItems');
   el.innerHTML = '';
   if (!t.items.length) { el.innerHTML = `<div style="text-align:center;padding:1rem;color:var(--muted);font-size:.8rem;">No items added</div>`; }
@@ -1722,8 +1864,46 @@ function renderTableDraft() {
       el.appendChild(div);
     });
   }
-  document.getElementById('tableDraftTotal').textContent = total.toLocaleString('en-IN');
+
+  document.getElementById('posBillSummary').innerHTML = `
+    <div style="display:flex;justify-content:space-between;font-size:.82rem;color:var(--muted);margin-bottom:.3rem;"><span>Subtotal</span><span>₹${itemsTotal.toLocaleString('en-IN')}</span></div>
+    ${extra ? `<div style="display:flex;justify-content:space-between;font-size:.82rem;color:var(--muted);margin-bottom:.3rem;"><span>Extra Charge</span><span>₹${extra.toLocaleString('en-IN')}</span></div>` : ''}
+    ${gstOn ? `<div style="display:flex;justify-content:space-between;font-size:.82rem;color:var(--muted);margin-bottom:.3rem;"><span>GST (${gstPct}%)</span><span>₹${gstAmt.toLocaleString('en-IN')}</span></div>` : ''}
+    <div style="display:flex;justify-content:space-between;align-items:center;border-top:1.5px solid var(--border);margin-top:.4rem;padding-top:.55rem;">
+      <span style="font-weight:700;color:var(--navy);">Total</span>
+      <span style="font-size:1.55rem;font-weight:800;color:var(--navy);">₹${total.toLocaleString('en-IN')}</span>
+    </div>`;
 }
+
+// ─────────────────────────────── SEND PRE-BILL VIA WHATSAPP (from POS, before finalize) ──
+function sendPosBillWhatsapp() {
+  const t = tableOrders[selectedTable];
+  if (!t || !t.items.length) { alert('Add items to the order first.'); return; }
+  const mobile = String(document.getElementById('tableCustomerMobile').value || '').replace(/\D/g,'');
+  if (!mobile) { alert('Enter the customer mobile number first.'); return; }
+  const itemsTotal = (t.items||[]).reduce((s,it)=>s+it.price*it.qty,0);
+  const extra = Number(document.getElementById('tableExtraCharge').value || 0);
+  const base = itemsTotal + extra;
+  const gstOn = !!appSettings.gstEnabled;
+  const gstPct = Number(appSettings.gstPercent || 0);
+  const gstAmt = gstOn ? Math.round(base * (gstPct/100) * 100) / 100 : 0;
+  const total = Math.round((base + gstAmt) * 100) / 100;
+  const tableLabel = (typeof selectedTable === 'string' && !/^\d+$/.test(String(selectedTable))) ? selectedTable : ('Table ' + selectedTable);
+  const lines = [
+    'FLAME AND FLAVOR',
+    tableLabel,
+    '--------------------------------',
+    ...t.items.map(i => `${i.name}${i.variant ? ' (' + i.variant + ')' : ''} x${i.qty} = ₹${i.price*i.qty}`),
+    '--------------------------------',
+    `Subtotal: ₹${itemsTotal}`,
+    extra ? `Extra Charge: ₹${extra}` : '',
+    gstOn ? `GST (${gstPct}%): ₹${gstAmt}` : '',
+    `TOTAL: ₹${total}`
+  ].filter(Boolean);
+  const phone = mobile.length === 10 ? '91' + mobile : mobile;
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(lines.join('\n'))}`, '_blank');
+}
+window.sendPosBillWhatsapp = sendPosBillWhatsapp;
 
 function onTableExtraChargeInput() {
   const t = tableOrders[selectedTable];
@@ -1789,7 +1969,7 @@ async function printTableKOT() {
   await autoSaveDraft();
   const lines = [
     '================================',
-    '  Sip and Bite  ',
+    '     FLAME AND FLAVOR     ',
     '  KOT — KITCHEN ORDER TICKET  ',
     '================================',
     `Table    : ${selectedTable}`,
@@ -1914,6 +2094,7 @@ function renderPendingDineIn() {
   const section = document.getElementById('pendingSection');
   const list = document.getElementById('pendingDineInList');
   updatePosBadge(pendingDineInReqs.length);
+  refreshAlertState(lastIncomingCount, pendingDineInReqs.length);
   if (!pendingDineInReqs.length) { section.style.display='none'; return; }
   section.style.display = 'block';
   list.innerHTML = '';
@@ -1936,6 +2117,7 @@ function updatePosBadge(count) {
 async function acceptPending(id) {
   await apiFetch(`/api/pending-dinein/${id}/accept`,{method:'POST'});
   pendingDineInReqs = pendingDineInReqs.filter(r=>r._id!==id);
+  dismissDineInPopup(id);
   renderPendingDineIn();
   await loadAllTableDrafts();
   renderTablesList();
@@ -1945,6 +2127,7 @@ async function acceptPending(id) {
 async function rejectPending(id) {
   await apiFetch(`/api/pending-dinein/${id}/reject`,{method:'POST'});
   pendingDineInReqs = pendingDineInReqs.filter(r=>r._id!==id);
+  dismissDineInPopup(id);
   renderPendingDineIn();
 }
 
