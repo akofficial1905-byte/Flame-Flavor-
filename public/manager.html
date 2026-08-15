@@ -1172,6 +1172,7 @@ function buildOrderCard(o) {
     <div style="font-weight:700;margin-bottom:.3rem;${isNew?'background:#FEF9C3;display:inline-block;padding:3px 9px;border-radius:7px;':''}">${esc(o.customerName||'No name')} — <span style="color:${isNew?'#92400E':'var(--amber)'};font-weight:800;">${fmtRs(o.total)}</span></div>
     ${o.mobile?`<div style="font-size:.75rem;color:var(--muted);">📞 ${esc(o.mobile)}</div>`:''}
     ${o.tableNumber?`<div style="font-size:.75rem;color:var(--muted);">🪑 Table ${esc(o.tableNumber)}</div>`:''}
+    ${(o.orderType && o.orderType!=='dinein' && o.collectedAmount>0)?`<div style="font-size:.75rem;color:var(--green);font-weight:700;">💵 Collected: ${fmtRs(o.collectedAmount)}</div>`:''}
     <div style="font-size:.78rem;color:${isNew?'#92400E':'var(--muted)'};margin:.3rem 0 .6rem;${isNew?'background:#FFFBEB;padding:6px 9px;border-radius:7px;border-left:3px solid var(--warn);font-weight:600;':''}">${esc((o.items||[]).map(i=>i.name+' x'+i.qty).join(', ')||'No items')}</div>
     <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
       <button class="btn btn-xs btn-primary" onclick="quickPrintReceipt('${o._id}')">🖨 Print</button>
@@ -2398,6 +2399,7 @@ async function performLookup() {
         <div style="font-weight:700;margin-bottom:.25rem;">${esc(o.customerName||'No name')} — <span style="color:var(--amber);">${fmtRs(o.total)}</span></div>
         ${o.mobile?`<div style="font-size:.75rem;color:var(--muted);">📞 ${esc(o.mobile)}</div>`:''}
         ${o.tableNumber?`<div style="font-size:.75rem;color:var(--muted);">🪑 Table ${esc(o.tableNumber)}</div>`:''}
+        ${(o.orderType && o.orderType!=='dinein' && o.collectedAmount>0)?`<div style="font-size:.75rem;color:var(--green);font-weight:700;">💵 Collected: ${fmtRs(o.collectedAmount)}</div>`:''}
         <div style="font-size:.75rem;color:var(--muted);margin:.3rem 0 .5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(itemsText)}</div>
         <div style="font-size:.65rem;color:var(--muted);margin-bottom:.6rem;opacity:.7;">ID: ${esc(o._id)}</div>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
