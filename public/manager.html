@@ -116,7 +116,7 @@
     .analytics-content.active{display:block;}
 
     /* ── POS ── */
-    .pos-layout{display:grid;grid-template-columns:200px 1fr 340px;gap:.9rem;flex:1;overflow:hidden;}
+    .pos-layout{display:grid;grid-template-columns:200px 1fr 430px;gap:.9rem;flex:1;overflow:hidden;}
     .pos-panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow-y:auto;padding:1rem;}
     .category-btn{width:100%;padding:.6rem .75rem;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-weight:600;font-size:.8rem;transition:all .15s;text-align:left;margin-bottom:.35rem;}
     .category-btn:hover{border-color:var(--amber);background:var(--surface2);}
@@ -135,6 +135,7 @@
     .table-btn .tn{font-size:1rem;font-weight:700;}
     .table-btn .ts{font-size:.65rem;opacity:.8;}
     .pos-section-label{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--navy);margin:0 0 .6rem;padding-bottom:.4rem;border-bottom:2px solid var(--border);}
+    .pos-billing .pos-section-label{font-size:.82rem;}
 
     /* ── HEADER HAMBURGER (main nav toggle) ── */
     .hamburger-btn{width:38px;height:34px;border-radius:7px;border:1.5px solid var(--border);background:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;flex-shrink:0;}
@@ -214,12 +215,25 @@
     .alert-popup{background:#fff;border-radius:10px;padding:.9rem 1rem;animation:popupPulse 1.4s ease-in-out infinite;}
     .alert-popup-close{background:var(--surface2);color:var(--navy);border:none;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:.8rem;flex-shrink:0;}
 
-    /* ── COMPACT POS BILLING PANEL (no scrolling needed) ── */
-    .pos-panel.pos-billing{display:flex;flex-direction:column;overflow:hidden;}
-    .pos-billing-actions{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.7rem;flex-shrink:0;}
-    .pos-customer-grid{display:grid;grid-template-columns:1.3fr 1fr .6fr;gap:.5rem;margin-bottom:.5rem;flex-shrink:0;}
-    #tableDraftItems{flex:1;min-height:0;overflow-y:auto;margin-bottom:.6rem;}
-    #posBillSummary{flex-shrink:0;background:var(--surface2);padding:.9rem 1rem;border-radius:10px;border:1px solid var(--border);}
+    /* ── COMPACT POS BILLING PANEL (no scrolling needed, but generously sized) ── */
+    .pos-panel.pos-billing{display:flex;flex-direction:column;overflow:hidden;padding:1.25rem;}
+    .pos-billing-actions{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.75rem;flex-shrink:0;}
+    .pos-billing-actions .btn{font-size:.88rem;padding:.7rem .9rem;font-weight:700;}
+    .pos-billing #selectedTableTitle{font-size:1.5rem!important;}
+    .pos-billing .btn-primary.print-bill-btn{font-size:.98rem;padding:.85rem;}
+    .pos-customer-grid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:.6rem;flex-shrink:0;}
+    .pos-customer-grid .full-row{grid-column:1/-1;}
+    .pos-billing .form-label{font-size:.85rem;font-weight:700;margin-bottom:.4rem;}
+    .pos-billing .form-input{font-size:1.02rem;padding:.75rem .9rem;}
+    #tableDraftItems{flex:1;min-height:0;overflow-y:auto;margin-bottom:.7rem;}
+    .draft-item{padding:.85rem 1rem;margin-bottom:.6rem;border-radius:10px;}
+    .draft-item-name{font-size:.98rem!important;}
+    .draft-item-variant{font-size:.78rem!important;}
+    .draft-item .qty-label{font-size:1rem!important;min-width:26px!important;}
+    .draft-item .line-amount{font-size:.95rem!important;min-width:60px!important;}
+    #posBillSummary{flex-shrink:0;background:var(--surface2);padding:1.1rem 1.25rem;border-radius:12px;border:1.5px solid var(--border);}
+    #posBillSummary .bill-row{font-size:.95rem!important;}
+    #posBillSummary .bill-grand{font-size:1.9rem!important;}
   </style>
 </head>
 <body>
@@ -251,6 +265,7 @@
     </div>
     <div style="display:flex;gap:.5rem;align-items:center;">
       <span id="liveTime" style="color:rgba(255,255,255,.7);font-size:.78rem;"></span>
+      <button class="btn btn-sm" id="silenceAlarmBtn" style="background:rgba(255,255,255,.15);color:#fff;" title="Stop the new-order alert sound" type="button">🔇 Silence</button>
       <button class="btn btn-sm" id="settingsGearBtn" style="background:rgba(255,255,255,.15);color:#fff;" title="More Options — GST, Charges, Custom Tables" type="button">⚙️ Options</button>
       <button class="btn btn-sm" style="background:var(--amber);color:#fff;" onclick="openModal('changeLoginModal')">Change Login</button>
       <button class="btn btn-sm btn-danger" id="logoutBtn">Logout</button>
@@ -521,14 +536,14 @@
               <button class="btn btn-info btn-sm" onclick="printTableKOT()">🎫 KOT</button>
               <button class="btn btn-success btn-sm" onclick="sendPosBillWhatsapp()">💬 WhatsApp</button>
             </div>
-            <button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:.8rem;flex-shrink:0;" onclick="finalizeTableOrder()">🖨 Save &amp; Print Bill</button>
+            <button class="btn btn-primary btn-sm print-bill-btn" style="width:100%;margin-bottom:.8rem;flex-shrink:0;" onclick="finalizeTableOrder()">🖨 Save &amp; Print Bill</button>
 
             <div id="tableLedgerBadge" style="flex-shrink:0;"></div>
 
-            <!-- Compact customer row -->
+            <!-- Customer row — name gets full width, mobile/guests share the row below -->
             <div class="pos-customer-grid">
-              <div class="form-group autocomplete-wrap" style="margin-bottom:0;">
-                <label class="form-label">Name</label>
+              <div class="form-group autocomplete-wrap full-row" style="margin-bottom:0;">
+                <label class="form-label">Customer Name</label>
                 <input id="tableCustomerName" type="text" class="form-input" placeholder="Name" oninput="handleCustomerAutoComplete(this,'tableMobileField','tableCustomerName')" autocomplete="off"/>
                 <div class="autocomplete-list" id="nameAcList"></div>
               </div>
@@ -815,7 +830,7 @@ function initSocket() {
 // Timeline: 5s chime → 15s hold → 30s louder chime → 10s hold → continuous chime until acted upon.
 let orderAlertActive = false;
 let orderAlertTimeouts = [];
-let orderAlertIntervalId = null;
+let orderAlertIntervals = [];
 
 function playChimeTone(big) {
   try {
@@ -840,16 +855,24 @@ function playChimeTone(big) {
 function scheduleChimeWindow(durationMs, big) {
   playChimeTone(big);
   const id = setInterval(() => playChimeTone(big), 750);
-  orderAlertTimeouts.push(setTimeout(() => clearInterval(id), durationMs));
+  orderAlertIntervals.push(id);
+  orderAlertTimeouts.push(setTimeout(() => {
+    clearInterval(id);
+    orderAlertIntervals = orderAlertIntervals.filter(x => x !== id);
+  }, durationMs));
 }
 
 function startContinuousChime() {
   playChimeTone(true);
-  orderAlertIntervalId = setInterval(() => playChimeTone(true), 900);
+  const id = setInterval(() => playChimeTone(true), 900);
+  orderAlertIntervals.push(id);
 }
 
 function triggerNewOrderAlert() {
-  if (orderAlertActive) return; // already escalating — let the existing schedule run
+  // Always give immediate audible feedback for THIS event, even if an escalation
+  // schedule is already running for a different, still-unresolved order.
+  playChimeTone(false);
+  if (orderAlertActive) return; // escalation timeline already running for the outstanding backlog
   orderAlertActive = true;
   scheduleChimeWindow(5000, false);                                  // phase 1: 0s–5s chime
   orderAlertTimeouts.push(setTimeout(() => {                         // phase 2: starts at 20s (5s + 15s hold)
@@ -863,7 +886,8 @@ function triggerNewOrderAlert() {
 function clearAlertTimers() {
   orderAlertTimeouts.forEach(t => clearTimeout(t));
   orderAlertTimeouts = [];
-  if (orderAlertIntervalId) { clearInterval(orderAlertIntervalId); orderAlertIntervalId = null; }
+  orderAlertIntervals.forEach(id => clearInterval(id));
+  orderAlertIntervals = [];
   orderAlertActive = false;
 }
 
@@ -981,6 +1005,8 @@ async function initManager() {
   await loadPendingDineIn();
   wireNavSidebar();
   wireSettingsPanel();
+  const silenceBtn = document.getElementById('silenceAlarmBtn');
+  if (silenceBtn) silenceBtn.onclick = () => clearAlertTimers();
 }
 
 // ─────────────────────────────── TABS ────────────────────────────────
@@ -1224,22 +1250,121 @@ function buildReceiptText(o) {
   return lines.filter(l=>l!==null&&l!==undefined&&l!=='').join('\n');
 }
 
+// Shared print styling used by every printable document (receipt + KOT) so
+// everything printed from the app looks consistent, clean, and legible.
+const PRINT_DOC_STYLES = `
+  *{box-sizing:border-box;}
+  body{font-family:'Segoe UI',Arial,sans-serif;width:320px;margin:0 auto;padding:18px 16px;color:#1F2937;}
+  .p-brand{text-align:center;margin-bottom:10px;}
+  .p-brand h1{font-size:20px;margin:0;letter-spacing:1.5px;font-weight:800;color:#1A2B42;}
+  .p-brand .p-doctype{font-size:11px;color:#6B7280;margin-top:3px;text-transform:uppercase;letter-spacing:1px;font-weight:700;}
+  .p-divider{border:none;border-top:2px dashed #9CA3AF;margin:10px 0;}
+  .p-meta{font-size:12px;margin:8px 0;}
+  .p-meta-row{display:flex;justify-content:space-between;margin-bottom:4px;}
+  .p-meta-row b{color:#1A2B42;}
+  table.p-items{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px;}
+  table.p-items th{text-align:left;border-bottom:2px solid #1A2B42;padding:5px 3px;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#1A2B42;}
+  table.p-items th.p-num, table.p-items td.p-num{text-align:right;}
+  table.p-items td{padding:6px 3px;border-bottom:1px dotted #D1D5DB;vertical-align:top;}
+  .p-item-variant{font-size:10.5px;color:#6B7280;}
+  .p-totals{margin-top:10px;font-size:13px;}
+  .p-totals-row{display:flex;justify-content:space-between;padding:3px 0;color:#374151;}
+  .p-grand{display:flex;justify-content:space-between;font-size:19px;font-weight:800;color:#1A2B42;border-top:2.5px solid #1A2B42;margin-top:8px;padding-top:8px;}
+  .p-footer{text-align:center;margin-top:18px;font-size:11px;color:#6B7280;}
+  .p-kot-item{font-size:16px;font-weight:700;padding:7px 0;border-bottom:1px dashed #D1D5DB;display:flex;justify-content:space-between;}
+  .p-kot-item .p-kot-variant{font-size:12px;font-weight:500;color:#4B5563;display:block;}
+  @media print{ body{width:100%;} }
+`;
+
+function buildReceiptHTML(o) {
+  const itemRows = (o.items||[]).map(i => `
+    <tr>
+      <td>${esc(i.name)}${i.variant ? `<div class="p-item-variant">${esc(i.variant)}</div>` : ''}</td>
+      <td class="p-num">${i.qty}</td>
+      <td class="p-num">₹${i.price}</td>
+      <td class="p-num">₹${i.price*i.qty}</td>
+    </tr>`).join('');
+
+  const metaRows = [
+    ['Order ID', String(o._id||'').slice(-8).toUpperCase()],
+    ['Type', (o.orderType||'').toUpperCase()],
+    ['Date', fmtDateTime(o.createdAt)],
+    ['Customer', o.customerName || 'N/A'],
+    o.mobile ? ['Mobile', o.mobile] : null,
+    o.tableNumber ? ['Table', o.tableNumber] : null,
+    o.gstin ? ['GSTIN', o.gstin] : null,
+    ['Payment', `${o.paymentMethod||'COD'}${o.paymentVerified ? ' ✓ PAID' : ' (PENDING)'}`]
+  ].filter(Boolean).map(([k,v]) => `<div class="p-meta-row"><span>${esc(k)}</span><b>${esc(String(v))}</b></div>`).join('');
+
+  const totalsRows = [
+    o.subtotal ? `<div class="p-totals-row"><span>Subtotal</span><span>₹${o.subtotal}</span></div>` : '',
+    o.extraCharge ? `<div class="p-totals-row"><span>${esc(o.extraChargeNote||'Extra Charge')}</span><span>₹${o.extraCharge}</span></div>` : '',
+    (o.gstEnabled && o.gstAmount) ? `<div class="p-totals-row"><span>GST (${o.gstPercent}%)</span><span>₹${o.gstAmount}</span></div>` : '',
+    o.ledgerApplied ? `<div class="p-totals-row"><span>Balance Applied</span><span>-₹${o.ledgerApplied}</span></div>` : ''
+  ].join('');
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Receipt</title><style>${PRINT_DOC_STYLES}</style></head><body>
+    <div class="p-brand"><h1>FLAME AND FLAVOR</h1><div class="p-doctype">Order Receipt</div></div>
+    <hr class="p-divider">
+    <div class="p-meta">${metaRows}</div>
+    <table class="p-items">
+      <thead><tr><th>Item</th><th class="p-num">Qty</th><th class="p-num">Rate</th><th class="p-num">Amt</th></tr></thead>
+      <tbody>${itemRows}</tbody>
+    </table>
+    <div class="p-totals">
+      ${totalsRows}
+      <div class="p-grand"><span>TOTAL</span><span>₹${o.total}</span></div>
+    </div>
+    <div class="p-footer">Thank you for choosing Flame And Flavor!</div>
+  </body></html>`;
+}
+
+function openPrintWindow(html) {
+  const w = window.open('', '_blank');
+  if (!w) { alert('Please allow pop-ups to print.'); return; }
+  w.document.write(html);
+  w.document.close();
+  w.onload = () => w.print();
+  // Fallback in case onload doesn't fire (some browsers with document.write)
+  setTimeout(() => { try { w.print(); } catch(e) {} }, 300);
+}
+
+function buildKOTHTML({ tableLabel, customerName, mobile, guestCount, items, timeLabel }) {
+  const itemRows = (items||[]).map(i => `
+    <div class="p-kot-item"><span>${esc(i.name)}${i.variant ? `<span class="p-kot-variant">${esc(i.variant)}</span>` : ''}</span><span>x${i.qty}</span></div>`).join('');
+  const metaRows = [
+    tableLabel ? ['Table', tableLabel] : null,
+    ['Time', timeLabel],
+    customerName ? ['Customer', customerName] : null,
+    mobile ? ['Mobile', mobile] : null,
+    guestCount ? ['Guests', String(guestCount)] : null
+  ].filter(Boolean).map(([k,v]) => `<div class="p-meta-row"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('');
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>KOT</title><style>${PRINT_DOC_STYLES}</style></head><body>
+    <div class="p-brand"><h1>FLAME AND FLAVOR</h1><div class="p-doctype">Kitchen Order Ticket</div></div>
+    <hr class="p-divider">
+    <div class="p-meta">${metaRows}</div>
+    <hr class="p-divider">
+    <div>${itemRows}</div>
+    <div class="p-footer">${(items||[]).length} item(s) — Kitchen Copy</div>
+  </body></html>`;
+}
+
 function doPrintReceipt() {
-  const pre = document.getElementById('printPreview').textContent;
-  const w = window.open('','_blank');
-  w.document.write(`<pre style="font-family:'Courier New',monospace;font-size:13px;padding:20px;white-space:pre;">${esc(pre)}</pre>`);
-  w.document.close(); w.print();
+  if (!currentPrintOrder) { alert('Open a print preview first.'); return; }
+  openPrintWindow(buildReceiptHTML(currentPrintOrder));
 }
 
 async function doPrintKOT() {
-  if (!currentPrintOrderId) return;
-  try {
-    const res = await fetch(`/api/orders/${currentPrintOrderId}/kot`);
-    const text = await res.text();
-    const w = window.open('','_blank');
-    w.document.write(`<pre style="font-family:'Courier New',monospace;font-size:13px;padding:20px;white-space:pre;">${esc(text)}</pre>`);
-    w.document.close(); w.print();
-  } catch(e) { alert('KOT error: '+e.message); }
+  if (!currentPrintOrder) return;
+  const o = currentPrintOrder;
+  openPrintWindow(buildKOTHTML({
+    tableLabel: o.tableNumber || '',
+    customerName: o.customerName || '',
+    mobile: o.mobile || '',
+    items: o.items || [],
+    timeLabel: fmtDateTime(o.createdAt)
+  }));
 }
 
 // ─────────────────────────────── SEND BILL VIA WHATSAPP ──────────────
@@ -1844,21 +1969,21 @@ function renderTableDraft() {
 
   const el = document.getElementById('tableDraftItems');
   el.innerHTML = '';
-  if (!t.items.length) { el.innerHTML = `<div style="text-align:center;padding:1rem;color:var(--muted);font-size:.8rem;">No items added</div>`; }
+  if (!t.items.length) { el.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.9rem;">No items added</div>`; }
   else {
     t.items.forEach((item,idx) => {
       const div = document.createElement('div');
       div.className = 'draft-item';
       div.innerHTML = `
         <div style="flex:1;min-width:0;">
-          <div style="font-weight:600;font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(item.name)}</div>
-          ${item.variant?`<div style="font-size:.65rem;color:var(--muted);">${esc(item.variant)}</div>`:''}
+          <div class="draft-item-name" style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(item.name)}</div>
+          ${item.variant?`<div class="draft-item-variant" style="color:var(--muted);">${esc(item.variant)}</div>`:''}
         </div>
-        <div style="display:flex;align-items:center;gap:.3rem;flex-shrink:0;">
+        <div style="display:flex;align-items:center;gap:.4rem;flex-shrink:0;">
           <button class="btn btn-xs btn-secondary" onclick="changeQty(${idx},-1)">−</button>
-          <span style="min-width:20px;text-align:center;font-weight:700;font-size:.82rem;">${item.qty}</span>
+          <span class="qty-label" style="text-align:center;font-weight:700;">${item.qty}</span>
           <button class="btn btn-xs btn-secondary" onclick="changeQty(${idx},1)">+</button>
-          <span style="min-width:45px;text-align:right;font-weight:700;color:var(--amber);font-size:.8rem;">₹${item.price*item.qty}</span>
+          <span class="line-amount" style="text-align:right;font-weight:700;color:var(--amber);">₹${item.price*item.qty}</span>
           <button class="btn btn-xs btn-danger" onclick="removeItem(${idx})">×</button>
         </div>`;
       el.appendChild(div);
@@ -1866,12 +1991,12 @@ function renderTableDraft() {
   }
 
   document.getElementById('posBillSummary').innerHTML = `
-    <div style="display:flex;justify-content:space-between;font-size:.82rem;color:var(--muted);margin-bottom:.3rem;"><span>Subtotal</span><span>₹${itemsTotal.toLocaleString('en-IN')}</span></div>
-    ${extra ? `<div style="display:flex;justify-content:space-between;font-size:.82rem;color:var(--muted);margin-bottom:.3rem;"><span>Extra Charge</span><span>₹${extra.toLocaleString('en-IN')}</span></div>` : ''}
-    ${gstOn ? `<div style="display:flex;justify-content:space-between;font-size:.82rem;color:var(--muted);margin-bottom:.3rem;"><span>GST (${gstPct}%)</span><span>₹${gstAmt.toLocaleString('en-IN')}</span></div>` : ''}
-    <div style="display:flex;justify-content:space-between;align-items:center;border-top:1.5px solid var(--border);margin-top:.4rem;padding-top:.55rem;">
-      <span style="font-weight:700;color:var(--navy);">Total</span>
-      <span style="font-size:1.55rem;font-weight:800;color:var(--navy);">₹${total.toLocaleString('en-IN')}</span>
+    <div class="bill-row" style="display:flex;justify-content:space-between;color:var(--muted);margin-bottom:.4rem;"><span>Subtotal</span><span>₹${itemsTotal.toLocaleString('en-IN')}</span></div>
+    ${extra ? `<div class="bill-row" style="display:flex;justify-content:space-between;color:var(--muted);margin-bottom:.4rem;"><span>Extra Charge</span><span>₹${extra.toLocaleString('en-IN')}</span></div>` : ''}
+    ${gstOn ? `<div class="bill-row" style="display:flex;justify-content:space-between;color:var(--muted);margin-bottom:.4rem;"><span>GST (${gstPct}%)</span><span>₹${gstAmt.toLocaleString('en-IN')}</span></div>` : ''}
+    <div style="display:flex;justify-content:space-between;align-items:center;border-top:2px solid var(--border);margin-top:.5rem;padding-top:.65rem;">
+      <span style="font-weight:700;color:var(--navy);font-size:1.05rem;">Total</span>
+      <span class="bill-grand" style="font-weight:800;color:var(--navy);">₹${total.toLocaleString('en-IN')}</span>
     </div>`;
 }
 
@@ -1967,24 +2092,15 @@ async function printTableKOT() {
   t.mobile = document.getElementById('tableCustomerMobile').value;
   t.guestCount = +document.getElementById('tableGuestCount').value||1;
   await autoSaveDraft();
-  const lines = [
-    '================================',
-    '     FLAME AND FLAVOR     ',
-    '  KOT — KITCHEN ORDER TICKET  ',
-    '================================',
-    `Table    : ${selectedTable}`,
-    `Time     : ${new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})}`,
-    t.customerName?`Customer : ${t.customerName}`:'',
-    t.mobile?`Mobile   : ${t.mobile}`:'',
-    `Guests   : ${t.guestCount}`,
-    '================================',
-    ...(t.items.map(i=>`  ${i.name}${i.variant?' ('+i.variant+')':''} × ${i.qty}`)),
-    '================================',
-    '\n\n'
-  ].filter(l=>l!==null&&l!==undefined);
-  const w = window.open('','_blank');
-  w.document.write(`<pre style="font-family:'Courier New',monospace;font-size:13px;padding:20px;">${esc(lines.join('\n'))}</pre>`);
-  w.document.close(); w.print();
+  const isCustom = typeof selectedTable === 'string' && !/^\d+$/.test(String(selectedTable));
+  openPrintWindow(buildKOTHTML({
+    tableLabel: isCustom ? selectedTable : ('Table ' + selectedTable),
+    customerName: t.customerName,
+    mobile: t.mobile,
+    guestCount: t.guestCount,
+    items: t.items,
+    timeLabel: new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})
+  }));
 }
 
 async function finalizeTableOrder() {
@@ -2011,12 +2127,8 @@ async function finalizeTableOrder() {
     });
 
     if (data.success && data.order) {
-      // Open print immediately
-      const order = data.order;
-      const text = buildReceiptText(order);
-      const w = window.open('','_blank');
-      w.document.write(`<pre style="font-family:'Courier New',monospace;font-size:13px;padding:20px;">${esc(text)}</pre>`);
-      w.document.close(); w.print();
+      // Open print immediately with the styled receipt template
+      openPrintWindow(buildReceiptHTML(data.order));
 
       // Clear table (and remove custom table from the list — it's a one-off, transient table)
       if (wasCustom) {
