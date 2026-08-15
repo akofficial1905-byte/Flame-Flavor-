@@ -991,8 +991,7 @@ app.get("/api/orders/:id/kot", async (req, res) => {
 function buildKOTText(o) {
   const lines = [
     "================================",
-    "   ABBA SEENUUU... FAST FOODS   ",
-    '   Taste like "ahh devudaa..."  ',
+    "        FLAME AND FLAVOR        ",
     "================================",
     `KOT / ORDER TICKET`,
     `Order ID : ${o._id}`,
