@@ -215,23 +215,19 @@
     .alert-popup{background:#fff;border-radius:10px;padding:.9rem 1rem;animation:popupPulse 1.4s ease-in-out infinite;}
     .alert-popup-close{background:var(--surface2);color:var(--navy);border:none;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:.8rem;flex-shrink:0;}
 
-    /* ── COMPACT POS BILLING PANEL (no scrolling needed, but generously sized) ── */
-    .pos-panel.pos-billing{display:flex;flex-direction:column;overflow:hidden;padding:1.25rem;}
-    .pos-billing-actions{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.75rem;flex-shrink:0;}
-    .pos-billing-actions .btn{font-size:.88rem;padding:.7rem .9rem;font-weight:700;}
-    .pos-billing #selectedTableTitle{font-size:1.5rem!important;}
-    .pos-billing .btn-primary.print-bill-btn{font-size:.98rem;padding:.85rem;}
-    .pos-customer-grid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:.6rem;flex-shrink:0;}
+    /* ── POS BILLING PANEL (customer, items, totals — action buttons live in the toolbar above) ── */
+    .pos-panel.pos-billing{display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;padding:1.25rem;}
+    .pos-customer-grid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:.8rem;flex-shrink:0;}
     .pos-customer-grid .full-row{grid-column:1/-1;}
     .pos-billing .form-label{font-size:.85rem;font-weight:700;margin-bottom:.4rem;}
     .pos-billing .form-input{font-size:1.02rem;padding:.75rem .9rem;}
-    #tableDraftItems{flex:1;min-height:0;overflow-y:auto;margin-bottom:.7rem;}
+    #tableDraftItems{max-height:38vh;overflow-y:auto;margin-bottom:.7rem;flex-shrink:0;}
     .draft-item{padding:.85rem 1rem;margin-bottom:.6rem;border-radius:10px;}
     .draft-item-name{font-size:.98rem!important;}
     .draft-item-variant{font-size:.78rem!important;}
     .draft-item .qty-label{font-size:1rem!important;min-width:26px!important;}
     .draft-item .line-amount{font-size:.95rem!important;min-width:60px!important;}
-    #posBillSummary{flex-shrink:0;background:var(--surface2);padding:1.1rem 1.25rem;border-radius:12px;border:1.5px solid var(--border);}
+    #posBillSummary{flex-shrink:0;background:var(--surface2);padding:1.1rem 1.25rem;border-radius:12px;border:1.5px solid var(--border);margin-top:auto;}
     #posBillSummary .bill-row{font-size:.95rem!important;}
     #posBillSummary .bill-grand{font-size:1.9rem!important;}
   </style>
@@ -502,6 +498,18 @@
         <!-- Table selector row -->
         <div class="tables-row" id="tablesList"></div>
 
+        <!-- Action toolbar — sits at the table-selector line, always visible regardless of scroll -->
+        <div id="posActionBar" style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.7rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;background:var(--surface);">
+          <div style="font-size:1.3rem;font-weight:800;color:var(--navy);" id="selectedTableTitle">Table 1</div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+            <button class="btn btn-secondary btn-sm" onclick="clearTableOrder()">🗑 Clear</button>
+            <button class="btn btn-warning btn-sm" onclick="saveDraftTable()">💾 Draft</button>
+            <button class="btn btn-info btn-sm" onclick="printTableKOT()">🎫 KOT</button>
+            <button class="btn btn-success btn-sm" onclick="sendPosBillWhatsapp()">💬 WhatsApp</button>
+            <button class="btn btn-primary btn-sm" onclick="finalizeTableOrder()">🖨 Save &amp; Print Bill</button>
+          </div>
+        </div>
+
         <!-- Pending dine-in -->
         <div id="pendingSection" style="display:none;flex-shrink:0;padding:.5rem 1.25rem;border-bottom:1px solid var(--border);background:#FFFBEB;">
           <div style="font-size:.8rem;font-weight:700;color:var(--amber);margin-bottom:.4rem;">⏳ Pending Dine-In Requests</div>
@@ -523,21 +531,8 @@
             <div class="menu-grid" id="tableMenuList"></div>
           </div>
 
-          <!-- Draft bill -->
+          <!-- Draft bill — customer, items, and totals only; actions live in the toolbar above -->
           <div class="pos-panel pos-billing">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;flex-shrink:0;">
-              <div style="font-size:1.15rem;font-weight:800;color:var(--navy);" id="selectedTableTitle">Table 1</div>
-            </div>
-
-            <!-- Quick actions moved to the top so they're always visible -->
-            <div class="pos-billing-actions">
-              <button class="btn btn-secondary btn-sm" onclick="clearTableOrder()">🗑 Clear</button>
-              <button class="btn btn-warning btn-sm" onclick="saveDraftTable()">💾 Draft</button>
-              <button class="btn btn-info btn-sm" onclick="printTableKOT()">🎫 KOT</button>
-              <button class="btn btn-success btn-sm" onclick="sendPosBillWhatsapp()">💬 WhatsApp</button>
-            </div>
-            <button class="btn btn-primary btn-sm print-bill-btn" style="width:100%;margin-bottom:.8rem;flex-shrink:0;" onclick="finalizeTableOrder()">🖨 Save &amp; Print Bill</button>
-
             <div id="tableLedgerBadge" style="flex-shrink:0;"></div>
 
             <!-- Customer row — name gets full width, mobile/guests share the row below -->
@@ -1252,28 +1247,31 @@ function buildReceiptText(o) {
 
 // Shared print styling used by every printable document (receipt + KOT) so
 // everything printed from the app looks consistent, clean, and legible.
+// Sized for standard 80mm thermal restaurant-billing roll paper, not A4 —
+// @page controls the physical roll width so nothing gets stranded on a big blank sheet.
 const PRINT_DOC_STYLES = `
+  @page { size: 80mm auto; margin: 3mm 2mm; }
   *{box-sizing:border-box;}
-  body{font-family:'Segoe UI',Arial,sans-serif;width:320px;margin:0 auto;padding:18px 16px;color:#1F2937;}
-  .p-brand{text-align:center;margin-bottom:10px;}
-  .p-brand h1{font-size:20px;margin:0;letter-spacing:1.5px;font-weight:800;color:#1A2B42;}
-  .p-brand .p-doctype{font-size:11px;color:#6B7280;margin-top:3px;text-transform:uppercase;letter-spacing:1px;font-weight:700;}
-  .p-divider{border:none;border-top:2px dashed #9CA3AF;margin:10px 0;}
-  .p-meta{font-size:12px;margin:8px 0;}
-  .p-meta-row{display:flex;justify-content:space-between;margin-bottom:4px;}
-  .p-meta-row b{color:#1A2B42;}
-  table.p-items{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px;}
-  table.p-items th{text-align:left;border-bottom:2px solid #1A2B42;padding:5px 3px;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#1A2B42;}
+  html,body{width:100%;margin:0;}
+  body{font-family:'Segoe UI',Arial,sans-serif;padding:2px 3px;color:#000;font-size:12.5px;}
+  .p-brand{text-align:center;margin-bottom:8px;}
+  .p-brand h1{font-size:19px;margin:0;letter-spacing:1.2px;font-weight:800;}
+  .p-brand .p-doctype{font-size:10.5px;margin-top:3px;text-transform:uppercase;letter-spacing:1px;font-weight:700;}
+  .p-divider{border:none;border-top:1.5px dashed #000;margin:8px 0;}
+  .p-meta{font-size:11.5px;margin:6px 0;}
+  .p-meta-row{display:flex;justify-content:space-between;margin-bottom:3px;}
+  .p-meta-row b{font-weight:700;}
+  table.p-items{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px;}
+  table.p-items th{text-align:left;border-bottom:1.5px solid #000;padding:4px 2px;font-size:10px;text-transform:uppercase;letter-spacing:.3px;}
   table.p-items th.p-num, table.p-items td.p-num{text-align:right;}
-  table.p-items td{padding:6px 3px;border-bottom:1px dotted #D1D5DB;vertical-align:top;}
-  .p-item-variant{font-size:10.5px;color:#6B7280;}
-  .p-totals{margin-top:10px;font-size:13px;}
-  .p-totals-row{display:flex;justify-content:space-between;padding:3px 0;color:#374151;}
-  .p-grand{display:flex;justify-content:space-between;font-size:19px;font-weight:800;color:#1A2B42;border-top:2.5px solid #1A2B42;margin-top:8px;padding-top:8px;}
-  .p-footer{text-align:center;margin-top:18px;font-size:11px;color:#6B7280;}
-  .p-kot-item{font-size:16px;font-weight:700;padding:7px 0;border-bottom:1px dashed #D1D5DB;display:flex;justify-content:space-between;}
-  .p-kot-item .p-kot-variant{font-size:12px;font-weight:500;color:#4B5563;display:block;}
-  @media print{ body{width:100%;} }
+  table.p-items td{padding:5px 2px;border-bottom:1px dotted #999;vertical-align:top;}
+  .p-item-variant{font-size:10px;color:#333;}
+  .p-totals{margin-top:8px;font-size:12.5px;}
+  .p-totals-row{display:flex;justify-content:space-between;padding:2px 0;}
+  .p-grand{display:flex;justify-content:space-between;font-size:17px;font-weight:800;border-top:2px solid #000;margin-top:6px;padding-top:6px;}
+  .p-footer{text-align:center;margin-top:14px;font-size:10.5px;}
+  .p-kot-item{font-size:15px;font-weight:700;padding:6px 0;border-bottom:1px dashed #999;display:flex;justify-content:space-between;}
+  .p-kot-item .p-kot-variant{font-size:11px;font-weight:500;display:block;}
 `;
 
 function buildReceiptHTML(o) {
