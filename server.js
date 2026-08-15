@@ -100,6 +100,7 @@ const orderSchema = new mongoose.Schema(
     gstAmount:  { type: Number, default: 0 },
     gstin:      { type: String, default: "" },  // snapshot of GSTIN at order time
     ledgerApplied: { type: Number, default: 0 }, // advance/dues amount applied to this order
+    collectedAmount: { type: Number, default: 0 }, // COD cash actually collected by delivery/takeaway staff
     total:    Number,
     isDraft:  { type: Boolean, default: false },
     source:   { type: String,  default: "" },
@@ -472,7 +473,7 @@ app.patch("/api/orders/:id", async (req, res) => {
       "customerName", "mobile", "registrationNumber", "address",
       "items", "total", "paymentMethod", "paymentVerified",
       "specialRequest", "requestTags", "status", "tableNumber",
-      "extraCharge", "extraChargeNote"
+      "extraCharge", "extraChargeNote", "collectedAmount"
     ];
 
     const update = {};
