@@ -1320,27 +1320,27 @@ function buildReceiptText(o) {
 // Sized for standard 80mm thermal restaurant-billing roll paper, not A4 —
 // @page controls the physical roll width so nothing gets stranded on a big blank sheet.
 const PRINT_DOC_STYLES = `
-  @page { size: 80mm auto; margin: 3mm 2mm; }
+  @page { size: 80mm auto; margin: 2mm 2mm; }
   *{box-sizing:border-box;}
   html,body{width:100%;margin:0;}
-  body{font-family:'Segoe UI',Arial,sans-serif;padding:2px 3px;color:#000;font-size:12.5px;}
-  .p-brand{text-align:center;margin-bottom:8px;}
-  .p-brand h1{font-size:19px;margin:0;letter-spacing:1.2px;font-weight:800;}
-  .p-brand .p-doctype{font-size:10.5px;margin-top:3px;text-transform:uppercase;letter-spacing:1px;font-weight:700;}
-  .p-divider{border:none;border-top:1.5px dashed #000;margin:8px 0;}
-  .p-meta{font-size:11.5px;margin:6px 0;}
-  .p-meta-row{display:flex;justify-content:space-between;margin-bottom:3px;}
-  .p-meta-row b{font-weight:700;}
-  table.p-items{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px;}
-  table.p-items th{text-align:left;border-bottom:1.5px solid #000;padding:4px 2px;font-size:10px;text-transform:uppercase;letter-spacing:.3px;}
+  body{font-family:'Segoe UI',Arial,sans-serif;padding:0 2px;color:#000;font-size:12px;}
+  .p-brand{text-align:center;margin-bottom:5px;}
+  .p-brand h1{font-size:17px;margin:0;letter-spacing:1px;font-weight:800;}
+  .p-brand .p-doctype{font-size:9.5px;margin-top:2px;text-transform:uppercase;letter-spacing:1px;font-weight:700;}
+  .p-divider{border:none;border-top:1.5px dashed #000;margin:5px 0;}
+  .p-meta{font-size:11px;margin:4px 0;}
+  .p-meta-row{display:flex;justify-content:space-between;gap:8px;margin-bottom:2px;}
+  .p-meta-row b{font-weight:700;text-align:right;}
+  table.p-items{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:4px;}
+  table.p-items th{text-align:left;border-bottom:1.5px solid #000;padding:3px 2px;font-size:9.5px;text-transform:uppercase;letter-spacing:.3px;}
   table.p-items th.p-num, table.p-items td.p-num{text-align:right;}
-  table.p-items td{padding:5px 2px;border-bottom:1px dotted #999;vertical-align:top;}
-  .p-item-variant{font-size:10px;color:#333;}
-  .p-totals{margin-top:8px;font-size:12.5px;}
-  .p-totals-row{display:flex;justify-content:space-between;padding:2px 0;}
-  .p-grand{display:flex;justify-content:space-between;font-size:17px;font-weight:800;border-top:2px solid #000;margin-top:6px;padding-top:6px;}
-  .p-footer{text-align:center;margin-top:14px;font-size:10.5px;}
-  .p-kot-item{font-size:15px;font-weight:700;padding:6px 0;border-bottom:1px dashed #999;display:flex;justify-content:space-between;}
+  table.p-items td{padding:3px 2px;border-bottom:1px dotted #999;vertical-align:top;}
+  .p-item-variant{font-size:9.5px;color:#333;}
+  .p-totals{margin-top:5px;font-size:11.5px;}
+  .p-totals-row{display:flex;justify-content:space-between;padding:1px 0;}
+  .p-grand{display:flex;justify-content:space-between;font-size:16px;font-weight:800;border-top:2px solid #000;margin-top:4px;padding-top:4px;}
+  .p-footer{text-align:center;margin-top:8px;font-size:11px;font-weight:700;}
+  .p-kot-item{font-size:15px;font-weight:700;padding:5px 0;border-bottom:1px dashed #999;display:flex;justify-content:space-between;}
   .p-kot-item .p-kot-variant{font-size:11px;font-weight:500;display:block;}
 `;
 
@@ -1349,19 +1349,18 @@ function buildReceiptHTML(o) {
     <tr>
       <td>${esc(i.name)}${i.variant ? `<div class="p-item-variant">${esc(i.variant)}</div>` : ''}</td>
       <td class="p-num">${i.qty}</td>
-      <td class="p-num">₹${i.price}</td>
       <td class="p-num">₹${i.price*i.qty}</td>
     </tr>`).join('');
 
+  // Kept intentionally minimal to save paper: name, mobile, order #, GSTIN (if applicable),
+  // address (delivery/takeaway orders only, shown when present), items, and total.
   const metaRows = [
-    ['Order ID', String(o._id||'').slice(-8).toUpperCase()],
-    ['Type', (o.orderType||'').toUpperCase()],
-    ['Date', fmtDateTime(o.createdAt)],
-    ['Customer', o.customerName || 'N/A'],
+    ['Order #', String(o._id||'').slice(-6).toUpperCase()],
+    ['Name', o.customerName || 'N/A'],
     o.mobile ? ['Mobile', o.mobile] : null,
     o.tableNumber ? ['Table', o.tableNumber] : null,
-    o.gstin ? ['GSTIN', o.gstin] : null,
-    ['Payment', `${o.paymentMethod||'COD'}${o.paymentVerified ? ' ✓ PAID' : ' (PENDING)'}`]
+    o.address ? ['Address', o.address] : null,
+    o.gstin ? ['GSTIN', o.gstin] : null
   ].filter(Boolean).map(([k,v]) => `<div class="p-meta-row"><span>${esc(k)}</span><b>${esc(String(v))}</b></div>`).join('');
 
   const totalsRows = [
@@ -1372,39 +1371,42 @@ function buildReceiptHTML(o) {
   ].join('');
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Receipt</title><style>${PRINT_DOC_STYLES}</style></head><body>
-    <div class="p-brand"><h1>FLAME AND FLAVOR</h1><div class="p-doctype">Order Receipt</div></div>
+    <div class="p-brand"><h1>FLAME AND FLAVOR</h1></div>
     <hr class="p-divider">
     <div class="p-meta">${metaRows}</div>
     <table class="p-items">
-      <thead><tr><th>Item</th><th class="p-num">Qty</th><th class="p-num">Rate</th><th class="p-num">Amt</th></tr></thead>
+      <thead><tr><th>Item</th><th class="p-num">Qty</th><th class="p-num">Amt</th></tr></thead>
       <tbody>${itemRows}</tbody>
     </table>
     <div class="p-totals">
       ${totalsRows}
       <div class="p-grand"><span>TOTAL</span><span>₹${o.total}</span></div>
     </div>
-    <div class="p-footer">Thank you for choosing Flame And Flavor!</div>
+    <div class="p-footer">Thanks!</div>
   </body></html>`;
 }
 
+// Guards against double-printing: some browsers fire the popup's onload event AND
+// leave it pending, so without a guard both the onload handler and the fallback
+// timeout below would each call print(), opening two print dialogs / wasting paper.
 function openPrintWindow(html) {
   const w = window.open('', '_blank');
   if (!w) { alert('Please allow pop-ups to print.'); return; }
   w.document.write(html);
   w.document.close();
-  w.onload = () => w.print();
-  // Fallback in case onload doesn't fire (some browsers with document.write)
-  setTimeout(() => { try { w.print(); } catch(e) {} }, 300);
+  let printed = false;
+  const doPrint = () => { if (printed) return; printed = true; try { w.print(); } catch(e) {} };
+  w.onload = doPrint;
+  setTimeout(doPrint, 300); // fallback only fires if onload never did
 }
 
-function buildKOTHTML({ tableLabel, customerName, mobile, guestCount, items, timeLabel }) {
+function buildKOTHTML({ tableLabel, guestCount, items, timeLabel }) {
   const itemRows = (items||[]).map(i => `
     <div class="p-kot-item"><span>${esc(i.name)}${i.variant ? `<span class="p-kot-variant">${esc(i.variant)}</span>` : ''}</span><span>x${i.qty}</span></div>`).join('');
+  // Kitchen copy — deliberately excludes customer name/mobile (irrelevant to cooking) to keep it short.
   const metaRows = [
     tableLabel ? ['Table', tableLabel] : null,
     ['Time', timeLabel],
-    customerName ? ['Customer', customerName] : null,
-    mobile ? ['Mobile', mobile] : null,
     guestCount ? ['Guests', String(guestCount)] : null
   ].filter(Boolean).map(([k,v]) => `<div class="p-meta-row"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('');
 
@@ -1414,7 +1416,6 @@ function buildKOTHTML({ tableLabel, customerName, mobile, guestCount, items, tim
     <div class="p-meta">${metaRows}</div>
     <hr class="p-divider">
     <div>${itemRows}</div>
-    <div class="p-footer">${(items||[]).length} item(s) — Kitchen Copy</div>
   </body></html>`;
 }
 
