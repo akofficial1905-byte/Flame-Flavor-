@@ -1,100 +1,100 @@
 {
   "Burgers (Veg)": [
-    { "name": "Veg. Tikki Burger", "image": "", "available": true, "variants": { "Plate": 60 } },
-    { "name": "Veg. Tikki with Cheese", "image": "", "available": true, "variants": { "Plate": 80 } }
+    { "name": "Veg. Tikki Burger", "image": "/veg-tikki-burger.jpg", "available": true, "variants": { "Plate": 60 } },
+    { "name": "Veg. Tikki with Cheese", "image": "/veg-tikki-with-cheese.jpg", "available": true, "variants": { "Plate": 80 } }
   ],
   "Burgers (Chicken)": [
-    { "name": "Classic Chicken Burger", "image": "", "available": true, "variants": { "Plate": 90 } },
-    { "name": "Cheese & Mayo Burger", "image": "", "available": true, "variants": { "Plate": 110 } },
-    { "name": "Zinger Crunch Burger", "image": "", "available": true, "variants": { "Plate": 130 } },
-    { "name": "Malai Tikka Burger", "image": "", "available": true, "variants": { "Plate": 140 } },
-    { "name": "Maharaja Burger", "image": "", "available": true, "variants": { "Plate": 160 } }
+    { "name": "Classic Chicken Burger", "image": "/classic-chicken-burger.jpg", "available": true, "variants": { "Plate": 90 } },
+    { "name": "Cheese & Mayo Burger", "image": "/cheese-mayo-burger.jpg", "available": true, "variants": { "Plate": 110 } },
+    { "name": "Zinger Crunch Burger", "image": "/zinger-crunch-burger.jpg", "available": true, "variants": { "Plate": 130 } },
+    { "name": "Malai Tikka Burger", "image": "/malai-tikka-burger.jpg", "available": true, "variants": { "Plate": 140 } },
+    { "name": "Maharaja Burger", "image": "/maharaja-burger.jpg", "available": true, "variants": { "Plate": 160 } }
   ],
   "Sandwiches (Chicken)": [
-    { "name": "Classic Sandwich", "image": "", "available": true, "variants": { "Plate": 100 } },
-    { "name": "Cheese Sandwich", "image": "", "available": true, "variants": { "Plate": 130 } },
-    { "name": "Chicken Cheeza", "image": "", "available": true, "variants": { "Plate": 170 } }
+    { "name": "Classic Sandwich", "image": "/classic-sandwich.jpg", "available": true, "variants": { "Plate": 100 } },
+    { "name": "Cheese Sandwich", "image": "/cheese-sandwich.jpg", "available": true, "variants": { "Plate": 130 } },
+    { "name": "Chicken Cheeza", "image": "/chicken-cheeza.jpg", "available": true, "variants": { "Plate": 170 } }
   ],
   "Meals (Coke + Fries)": [
-    { "name": "Cheese and Mayo Burger (Meal)", "image": "", "available": true, "variants": { "Plate": 170 } },
-    { "name": "Zinger Crunch Burger (Meal)", "image": "", "available": true, "variants": { "Plate": 190 } },
-    { "name": "Malai Tikka Burger (Meal)", "image": "", "available": true, "variants": { "Plate": 200 } },
-    { "name": "Maharaja Burger (Meal)", "image": "", "available": true, "variants": { "Plate": 230 } }
+    { "name": "Cheese and Mayo Burger (Meal)", "image": "/cheese-mayo-burger-meal.jpg", "available": true, "variants": { "Plate": 170 } },
+    { "name": "Zinger Crunch Burger (Meal)", "image": "/zinger-crunch-burger-meal.jpg", "available": true, "variants": { "Plate": 190 } },
+    { "name": "Malai Tikka Burger (Meal)", "image": "/malai-tikka-burger-meal.jpg", "available": true, "variants": { "Plate": 200 } },
+    { "name": "Maharaja Burger (Meal)", "image": "/maharaja-burger-meal.jpg", "available": true, "variants": { "Plate": 230 } }
   ],
   "Wraps": [
-    { "name": "Zinger Wrap", "image": "", "available": true, "variants": { "Plate": 100 } },
-    { "name": "Malai Tikka Wrap", "image": "", "available": true, "variants": { "Plate": 140 } },
-    { "name": "Seekh Kabab Wrap", "image": "", "available": true, "variants": { "Plate": 150 } }
+    { "name": "Zinger Wrap", "image": "/zinger-wrap.jpg", "available": true, "variants": { "Plate": 100 } },
+    { "name": "Malai Tikka Wrap", "image": "/malai-tikka-wrap.jpg", "available": true, "variants": { "Plate": 140 } },
+    { "name": "Seekh Kabab Wrap", "image": "/seekh-kabab-wrap.jpg", "available": true, "variants": { "Plate": 150 } }
   ],
   "Snacks & Sides": [
-    { "name": "Fries", "image": "", "available": true, "variants": { "Regular": 60, "Large": 100 } },
-    { "name": "Pop Corn 12 Pcs", "image": "", "available": true, "variants": { "Plate": 130 } },
-    { "name": "Strip 5 Pcs", "image": "", "available": true, "variants": { "Plate": 150 } },
-    { "name": "Pop Corn with Peri Peri Fries", "image": "", "available": true, "variants": { "Plate": 160 } },
-    { "name": "Nuggets 6 Pcs", "image": "", "available": true, "variants": { "Plate": 170 } },
-    { "name": "Chicken Lollipop 6 Pcs", "image": "", "available": true, "variants": { "Plate": 180 } },
-    { "name": "Chicken Crispy Legs 5 Pcs", "image": "", "available": true, "variants": { "Plate": 260 } },
-    { "name": "Chicken Wings 6 Pcs", "image": "", "available": true, "variants": { "Plate": 170 } },
-    { "name": "Mini Bucket (1 Wing, 1 Strip, 1 Nugget, 5 PopCorn)", "image": "", "available": true, "variants": { "Plate": 120 } },
-    { "name": "Party Bucket (2 Legs, 2 Lollipops, 3 Strips, 3 Nuggets, 2 Wings, PopCorn, Fries)", "image": "", "available": true, "variants": { "Plate": 450 } }
+    { "name": "Fries", "image": "/fries.jpg", "available": true, "variants": { "Regular": 60, "Large": 100 } },
+    { "name": "Pop Corn 12 Pcs", "image": "/pop-corn-12-pcs.jpg", "available": true, "variants": { "Plate": 130 } },
+    { "name": "Strip 5 Pcs", "image": "/strip-5-pcs.jpg", "available": true, "variants": { "Plate": 150 } },
+    { "name": "Pop Corn with Peri Peri Fries", "image": "/pop-corn-with-peri-peri-fries.jpg", "available": true, "variants": { "Plate": 160 } },
+    { "name": "Nuggets 6 Pcs", "image": "/nuggets-6-pcs.jpg", "available": true, "variants": { "Plate": 170 } },
+    { "name": "Chicken Lollipop 6 Pcs", "image": "/chicken-lollipop-6-pcs.jpg", "available": true, "variants": { "Plate": 180 } },
+    { "name": "Chicken Crispy Legs 5 Pcs", "image": "/chicken-crispy-legs-5-pcs.jpg", "available": true, "variants": { "Plate": 260 } },
+    { "name": "Chicken Wings 6 Pcs", "image": "/chicken-wings-6-pcs.jpg", "available": true, "variants": { "Plate": 170 } },
+    { "name": "Mini Bucket (1 Wing, 1 Strip, 1 Nugget, 5 PopCorn)", "image": "/mini-bucket.jpg", "available": true, "variants": { "Plate": 120 } },
+    { "name": "Party Bucket (2 Legs, 2 Lollipops, 3 Strips, 3 Nuggets, 2 Wings, PopCorn, Fries)", "image": "/party-bucket.jpg", "available": true, "variants": { "Plate": 450 } }
   ],
   "Special Buckets": [
-    { "name": "Zinger Bucket (4 Pcs Chicken + Zinger Burger, Fries + Coke)", "image": "", "available": true, "variants": { "Plate": 300 } },
-    { "name": "Maharaja Bucket (4 Pcs Chicken + Maharaja Burger, Fries + Coke)", "image": "", "available": true, "variants": { "Plate": 340 } },
-    { "name": "All in One Bucket (2 Legs, 3 Nuggets, 3 Strips, 3 Wings, 1 Zinger Burger, Large Fries, 2 Dips, 2 Pepsi)", "image": "", "available": true, "variants": { "Plate": 500 } }
+    { "name": "Zinger Bucket (4 Pcs Chicken + Zinger Burger, Fries + Coke)", "image": "/zinger-bucket.jpg", "available": true, "variants": { "Plate": 300 } },
+    { "name": "Maharaja Bucket (4 Pcs Chicken + Maharaja Burger, Fries + Coke)", "image": "/maharaja-bucket.jpg", "available": true, "variants": { "Plate": 340 } },
+    { "name": "All in One Bucket (2 Legs, 3 Nuggets, 3 Strips, 3 Wings, 1 Zinger Burger, Large Fries, 2 Dips, 2 Pepsi)", "image": "/all-in-one-bucket.jpg", "available": true, "variants": { "Plate": 500 } }
   ],
   "Khabsa": [
-    { "name": "Khabsa Tandoori Special (Tandoori + Alfahm + 2 Kabab + 2 Fried Chicken + 1 Egg + 2 Butter Roti + Mayo + Gravy + Salad)", "image": "", "available": true, "variants": { "Plate": 550 } },
-    { "name": "Khabsa Afghani Special (Afghani + Malai Tikka + 2 Kabab + 2 Fried Chicken + 1 Egg + 2 Butter Roti + Mayo + Gravy + Salad)", "image": "", "available": true, "variants": { "Plate": 620 } }
+    { "name": "Khabsa Tandoori Special (Tandoori + Alfahm + 2 Kabab + 2 Fried Chicken + 1 Egg + 2 Butter Roti + Mayo + Gravy + Salad)", "image": "/khabsa-tandoori-special.jpg", "available": true, "variants": { "Plate": 550 } },
+    { "name": "Khabsa Afghani Special (Afghani + Malai Tikka + 2 Kabab + 2 Fried Chicken + 1 Egg + 2 Butter Roti + Mayo + Gravy + Salad)", "image": "/khabsa-afghani-special.jpg", "available": true, "variants": { "Plate": 620 } }
   ],
   "Biryani": [
-    { "name": "Hyderabadi Biryani", "image": "", "available": true, "variants": { "Plate": 150 } },
-    { "name": "Shahi Kabab Biryani", "image": "", "available": true, "variants": { "Plate": 180 } },
-    { "name": "Tandoori Biryani", "image": "", "available": true, "variants": { "Plate": 190 } },
-    { "name": "Malai Tikka Biryani", "image": "", "available": true, "variants": { "Plate": 200 } },
-    { "name": "KFC Biryani", "image": "", "available": true, "variants": { "Plate": 200 } },
-    { "name": "Biryani Duet", "image": "", "available": true, "variants": { "Plate": 170 } },
-    { "name": "Rizzo Biryani", "image": "", "available": true, "variants": { "Plate": 230 } }
+    { "name": "Hyderabadi Biryani", "image": "/hyderabadi-biryani.jpg", "available": true, "variants": { "Plate": 150 } },
+    { "name": "Shahi Kabab Biryani", "image": "/shahi-kabab-biryani.jpg", "available": true, "variants": { "Plate": 180 } },
+    { "name": "Tandoori Biryani", "image": "/tandoori-biryani.jpg", "available": true, "variants": { "Plate": 190 } },
+    { "name": "Malai Tikka Biryani", "image": "/malai-tikka-biryani.jpg", "available": true, "variants": { "Plate": 200 } },
+    { "name": "KFC Biryani", "image": "/kfc-biryani.jpg", "available": true, "variants": { "Plate": 200 } },
+    { "name": "Biryani Duet", "image": "/biryani-duet.jpg", "available": true, "variants": { "Plate": 170 } },
+    { "name": "Rizzo Biryani", "image": "/rizzo-biryani.jpg", "available": true, "variants": { "Plate": 230 } }
   ],
   "Starters": [
-    { "name": "Seekh Kabab", "image": "", "available": true, "variants": { "Plate": 90 } },
-    { "name": "Seekh Kabab with Cream", "image": "", "available": true, "variants": { "Plate": 110 } },
-    { "name": "Chicken Tandoori", "image": "", "available": true, "variants": { "Qtr": 160, "Half": 310 } },
-    { "name": "Chicken Tandoori with Dahi Butter", "image": "", "available": true, "variants": { "Qtr": 180, "Half": 350 } },
-    { "name": "Afghani Chicken", "image": "", "available": true, "variants": { "Qtr": 180, "Half": 350 } },
-    { "name": "Alfahm", "image": "", "available": true, "variants": { "Qtr": 180, "Half": 350 } },
-    { "name": "Alfahm Cream", "image": "", "available": true, "variants": { "Qtr": 200, "Half": 380 } },
-    { "name": "Chicken Burra", "image": "", "available": true, "variants": { "Qtr": 180, "Half": 350 } },
-    { "name": "Tandoori Tikka", "image": "", "available": true, "variants": { "Plate": 180 } },
-    { "name": "Malai Tikka", "image": "", "available": true, "variants": { "Plate": 190 } }
+    { "name": "Seekh Kabab", "image": "/seekh-kabab.jpg", "available": true, "variants": { "Plate": 90 } },
+    { "name": "Seekh Kabab with Cream", "image": "/seekh-kabab-with-cream.jpg", "available": true, "variants": { "Plate": 110 } },
+    { "name": "Chicken Tandoori", "image": "/chicken-tandoori.jpg", "available": true, "variants": { "Qtr": 160, "Half": 310 } },
+    { "name": "Chicken Tandoori with Dahi Butter", "image": "/chicken-tandoori-with-dahi-butter.jpg", "available": true, "variants": { "Qtr": 180, "Half": 350 } },
+    { "name": "Afghani Chicken", "image": "/afghani-chicken.jpg", "available": true, "variants": { "Qtr": 180, "Half": 350 } },
+    { "name": "Alfahm", "image": "/alfahm.jpg", "available": true, "variants": { "Qtr": 180, "Half": 350 } },
+    { "name": "Alfahm Cream", "image": "/alfahm-cream.jpg", "available": true, "variants": { "Qtr": 200, "Half": 380 } },
+    { "name": "Chicken Burra", "image": "/chicken-burra.jpg", "available": true, "variants": { "Qtr": 180, "Half": 350 } },
+    { "name": "Tandoori Tikka", "image": "/tandoori-tikka.jpg", "available": true, "variants": { "Plate": 180 } },
+    { "name": "Malai Tikka", "image": "/malai-tikka.jpg", "available": true, "variants": { "Plate": 190 } }
   ],
   "Main Course": [
-    { "name": "Butter Chicken", "image": "", "available": true, "variants": { "Qtr": 180, "Half": 350 } },
-    { "name": "Lemon Tawa", "image": "", "available": true, "variants": { "Qtr": 180, "Half": 350 } },
-    { "name": "Kali Mirch", "image": "", "available": true, "variants": { "Qtr": 180, "Half": 350 } },
-    { "name": "Chicken Rara", "image": "", "available": true, "variants": { "Plate": 260 } },
-    { "name": "Kaju Keema", "image": "", "available": true, "variants": { "Plate": 260 } },
-    { "name": "Plain Rice", "image": "", "available": true, "variants": { "Plate": 80 } }
+    { "name": "Butter Chicken", "image": "/butter-chicken.jpg", "available": true, "variants": { "Qtr": 180, "Half": 350 } },
+    { "name": "Lemon Tawa", "image": "/lemon-tawa.jpg", "available": true, "variants": { "Qtr": 180, "Half": 350 } },
+    { "name": "Kali Mirch", "image": "/kali-mirch.jpg", "available": true, "variants": { "Qtr": 180, "Half": 350 } },
+    { "name": "Chicken Rara", "image": "/chicken-rara.jpg", "available": true, "variants": { "Plate": 260 } },
+    { "name": "Kaju Keema", "image": "/kaju-keema.jpg", "available": true, "variants": { "Plate": 260 } },
+    { "name": "Plain Rice", "image": "/plain-rice.jpg", "available": true, "variants": { "Plate": 80 } }
   ],
   "Drinks": [
-    { "name": "Mojito", "image": "", "available": true, "variants": { "Plate": 60 } },
-    { "name": "Blue Lagoon", "image": "", "available": true, "variants": { "Plate": 60 } },
-    { "name": "Watermelon", "image": "", "available": true, "variants": { "Plate": 60 } },
-    { "name": "Green Apple", "image": "", "available": true, "variants": { "Plate": 60 } },
-    { "name": "Soft Drink", "image": "", "available": true, "variants": { "Plate": 0 } },
-    { "name": "Mineral Water", "image": "", "available": true, "variants": { "Plate": 0 } }
+    { "name": "Mojito", "image": "/mojito.jpg", "available": true, "variants": { "Plate": 60 } },
+    { "name": "Blue Lagoon", "image": "/blue-lagoon.jpg", "available": true, "variants": { "Plate": 60 } },
+    { "name": "Watermelon", "image": "/watermelon.jpg", "available": true, "variants": { "Plate": 60 } },
+    { "name": "Green Apple", "image": "/green-apple.jpg", "available": true, "variants": { "Plate": 60 } },
+    { "name": "Soft Drink", "image": "/soft-drink.jpg", "available": true, "variants": { "Plate": 0 } },
+    { "name": "Mineral Water", "image": "/mineral-water.jpg", "available": true, "variants": { "Plate": 0 } }
   ],
   "Breads": [
-    { "name": "Khamiri Roti", "image": "", "available": true, "variants": { "Plate": 10 } },
-    { "name": "Khamiri Butter", "image": "", "available": true, "variants": { "Plate": 15 } },
-    { "name": "Rumali Roti", "image": "", "available": true, "variants": { "Plate": 10 } },
-    { "name": "Lachcha Parantha", "image": "", "available": true, "variants": { "Plate": 25 } }
+    { "name": "Khamiri Roti", "image": "/khamiri-roti.jpg", "available": true, "variants": { "Plate": 10 } },
+    { "name": "Khamiri Butter", "image": "/khamiri-butter.jpg", "available": true, "variants": { "Plate": 15 } },
+    { "name": "Rumali Roti", "image": "/rumali-roti.jpg", "available": true, "variants": { "Plate": 10 } },
+    { "name": "Lachcha Parantha", "image": "/lachcha-parantha.jpg", "available": true, "variants": { "Plate": 25 } }
   ],
   "Desserts": [
-    { "name": "Flames Special Kheer", "image": "", "available": true, "variants": { "Plate": 40 } }
+    { "name": "Flames Special Kheer", "image": "/flames-special-kheer.jpg", "available": true, "variants": { "Plate": 40 } }
   ],
   "Flame Special": [
-    { "name": "Fish Tandoori Tikka (5 Pcs)", "image": "", "available": true, "variants": { "Plate": 200 } },
-    { "name": "Fish Rice", "image": "", "available": true, "variants": { "Plate": 300 } }
+    { "name": "Fish Tandoori Tikka (5 Pcs)", "image": "/fish-tandoori-tikka.jpg", "available": true, "variants": { "Plate": 200 } },
+    { "name": "Fish Rice", "image": "/fish-rice.jpg", "available": true, "variants": { "Plate": 300 } }
   ]
 }
