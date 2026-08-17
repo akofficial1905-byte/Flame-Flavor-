@@ -676,6 +676,15 @@
 
 <!-- ═══════════════ MODALS ═══════════════ -->
 
+<!-- Variant Picker Modal (multi-size items — e.g. Qtr/Half, Regular/Large) -->
+<div id="variantPickerModal" class="modal">
+  <div class="modal-box" style="max-width:360px;">
+    <h2 id="variantPickerTitle" style="font-size:1.1rem;font-weight:700;margin-bottom:1rem;">Choose Option</h2>
+    <div id="variantPickerBody"></div>
+    <button class="btn btn-secondary" style="width:100%;margin-top:.25rem;" onclick="closeModal('variantPickerModal')">Cancel</button>
+  </div>
+</div>
+
 <!-- Print Modal -->
 <div id="printModal" class="modal">
   <div class="modal-box" style="width:500px;">
@@ -1283,13 +1292,7 @@ async function quickPrintKOT(orderId) {
     const o = await apiFetch(`/api/orders/${orderId}`);
     currentPrintOrder = o;
     currentPrintOrderId = orderId;
-    openPrintWindow(buildKOTHTML({
-      tableLabel: o.tableNumber || '',
-      customerName: o.customerName || '',
-      mobile: o.mobile || '',
-      items: o.items || [],
-      timeLabel: fmtDateTime(o.createdAt)
-    }));
+    openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [] }));
   } catch(e) { alert('Could not print: '+e.message); }
 }
 window.quickPrintKOT = quickPrintKOT;
@@ -1367,17 +1370,14 @@ function buildReceiptHTML(o) {
       <td class="p-num">₹${i.price*i.qty}</td>
     </tr>`).join('');
 
-  // Kept intentionally minimal to save paper: name, mobile, order #, GSTIN (if applicable),
-  // address (delivery/takeaway orders only, shown when present), items, and total.
-  // Payment method/status is shown for delivery & takeaway only — dine-in is always pay-later.
+  // Minimal by design: brand, GSTIN, name, mobile, and table (dine-in) OR address
+  // (delivery/takeaway) — no order #, no payment-status line, to keep the paper short.
   const metaRows = [
-    ['Order #', String(o._id||'').slice(-6).toUpperCase()],
+    o.gstin ? ['GSTIN', o.gstin] : null,
     ['Name', o.customerName || 'N/A'],
     o.mobile ? ['Mobile', o.mobile] : null,
-    o.tableNumber ? ['Table', o.tableNumber] : null,
-    o.address ? ['Address', o.address] : null,
-    (o.orderType && o.orderType !== 'dinein') ? ['Payment', `${o.paymentMethod||'COD'}${o.paymentVerified ? ' - PAID' : ' - PENDING'}`] : null,
-    o.gstin ? ['GSTIN', o.gstin] : null
+    (o.orderType === 'dinein' && o.tableNumber) ? ['Table', o.tableNumber]
+      : (o.orderType !== 'dinein' && o.address) ? ['Address', o.address] : null
   ].filter(Boolean).map(([k,v]) => `<div class="p-meta-row"><span>${esc(k)}</span><b>${esc(String(v))}</b></div>`).join('');
 
   const totalsRows = [
@@ -1417,21 +1417,21 @@ function openPrintWindow(html) {
   setTimeout(doPrint, 300); // fallback only fires if onload never did
 }
 
-function buildKOTHTML({ tableLabel, guestCount, items, timeLabel }) {
+// Kitchen copy — stripped to the bare minimum: table number (or order type for
+// takeaway/delivery, since there's no table) and the items themselves. No brand
+// name, no time, no customer info — kitchen staff only need to know what to cook
+// and where it's going, and every extra line is paper the kitchen burns through.
+function kotLabelFor(o) {
+  if (o.tableNumber) return /^\d+$/.test(String(o.tableNumber)) ? 'Table ' + o.tableNumber : o.tableNumber;
+  return (o.orderType || '').toUpperCase();
+}
+
+function buildKOTHTML({ tableLabel, items }) {
   const itemRows = (items||[]).map(i => `
     <div class="p-kot-item"><span>${esc(i.name)}${i.variant ? `<span class="p-kot-variant">${esc(i.variant)}</span>` : ''}</span><span>x${i.qty}</span></div>`).join('');
-  // Kitchen copy — deliberately excludes customer name/mobile (irrelevant to cooking) to keep it short.
-  const metaRows = [
-    tableLabel ? ['Table', tableLabel] : null,
-    ['Time', timeLabel],
-    guestCount ? ['Guests', String(guestCount)] : null
-  ].filter(Boolean).map(([k,v]) => `<div class="p-meta-row"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('');
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>KOT</title><style>${PRINT_DOC_STYLES}</style></head><body>
-    <div class="p-brand"><h1>FLAME AND FLAVOR</h1><div class="p-doctype">Kitchen Order Ticket</div></div>
-    <hr class="p-divider">
-    <div class="p-meta">${metaRows}</div>
-    <hr class="p-divider">
+    ${tableLabel ? `<div class="p-brand"><h1>${esc(tableLabel)}</h1></div><hr class="p-divider">` : ''}
     <div>${itemRows}</div>
   </body></html>`;
 }
@@ -1444,13 +1444,7 @@ function doPrintReceipt() {
 async function doPrintKOT() {
   if (!currentPrintOrder) return;
   const o = currentPrintOrder;
-  openPrintWindow(buildKOTHTML({
-    tableLabel: o.tableNumber || '',
-    customerName: o.customerName || '',
-    mobile: o.mobile || '',
-    items: o.items || [],
-    timeLabel: fmtDateTime(o.createdAt)
-  }));
+  openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [] }));
 }
 
 // ─────────────────────────────── SEND BILL VIA WHATSAPP ──────────────
@@ -1908,16 +1902,16 @@ async function saveInventory() {
 async function loadMenuForTables() {
   try {
     if (!menuData) { const r = await fetch('/menu.json'); menuData = await r.json(); }
+    // One entry per menu item (not per variant) — items with multiple size/variant
+    // options are shown as a single tile, and clicking opens a picker instead of
+    // showing "Item (Qtr)" / "Item (Half)" etc as separate cards.
     tableMenuFlat = [];
     Object.entries(menuData||{}).forEach(([category, items]) => {
       items.forEach(item => {
-        if (item.variants && Object.keys(item.variants).length) {
-          Object.entries(item.variants).forEach(([variant,price]) => {
-            tableMenuFlat.push({ category, name:item.name, variant, price:+price||0, available:item.available!==false });
-          });
-        } else {
-          tableMenuFlat.push({ category, name:item.name, variant:'', price:+(item.price||0), available:item.available!==false });
-        }
+        const variants = (item.variants && Object.keys(item.variants).length)
+          ? item.variants
+          : { '': +(item.price||0) };
+        tableMenuFlat.push({ category, name:item.name, variants, available:item.available!==false });
       });
     });
   } catch(e) { console.error('loadMenuForTables',e); }
@@ -1964,16 +1958,42 @@ function renderTableMenuList() {
   menuList.innerHTML = '';
   if (!selectedCategory) { menuList.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:1rem;">Select a category</div>`; return; }
   const q = document.getElementById('tableMenuSearch').value.toLowerCase();
-  const filtered = tableMenuFlat.filter(i => i.category===selectedCategory && `${i.name} ${i.variant}`.toLowerCase().includes(q) && i.available);
+  const filtered = tableMenuFlat.filter(i => i.category===selectedCategory && i.name.toLowerCase().includes(q) && i.available);
   if (!filtered.length) { menuList.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:1rem;">No items found</div>`; return; }
   filtered.forEach(item => {
+    const variantKeys = Object.keys(item.variants);
+    const hasChoice = variantKeys.length > 1;
+    const priceLabel = hasChoice ? 'Select option →' : `₹${item.variants[variantKeys[0]]}`;
     const div = document.createElement('div');
     div.className = 'menu-card';
-    div.innerHTML = `<div class="menu-card-name">${esc(item.name)}</div>${item.variant?`<div style="font-size:.7rem;color:var(--muted);">${esc(item.variant)}</div>`:''}<div class="menu-card-price">₹${item.price}</div>`;
-    div.onclick = () => addItemToDraft(item);
+    div.innerHTML = `<div class="menu-card-name">${esc(item.name)}</div><div class="menu-card-price">${esc(priceLabel)}</div>`;
+    div.onclick = () => {
+      if (hasChoice) openVariantPicker(item);
+      else addItemToDraft({ name:item.name, variant:variantKeys[0], price:item.variants[variantKeys[0]], category:item.category });
+    };
     menuList.appendChild(div);
   });
 }
+
+// One item, multiple sizes/options (e.g. Qtr/Half, Regular/Large) — pick which one to add.
+function openVariantPicker(item) {
+  document.getElementById('variantPickerTitle').textContent = item.name;
+  const body = document.getElementById('variantPickerBody');
+  body.innerHTML = '';
+  Object.entries(item.variants).forEach(([variant, price]) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-primary';
+    btn.style.cssText = 'width:100%;margin-bottom:.6rem;justify-content:space-between;font-size:.95rem;padding:.85rem 1.1rem;';
+    btn.innerHTML = `<span>${esc(variant || item.name)}</span><span>₹${price}</span>`;
+    btn.onclick = () => {
+      addItemToDraft({ name:item.name, variant, price, category:item.category });
+      closeModal('variantPickerModal');
+    };
+    body.appendChild(btn);
+  });
+  openModal('variantPickerModal');
+}
+window.openVariantPicker = openVariantPicker;
 
 function addItemToDraft(item) {
   const t = tableOrders[selectedTable];
@@ -2055,7 +2075,7 @@ function renderTableDraft() {
   const gstOn = !!appSettings.gstEnabled;
   const gstPct = Number(appSettings.gstPercent||0);
   const gstAmt = gstOn ? Math.round(base * (gstPct/100) * 100) / 100 : 0;
-  const total = Math.round((base + gstAmt) * 100) / 100;
+  const total = Math.round(base + gstAmt); // round to nearest ₹1 — subtotal/GST lines shown precisely above
 
   const el = document.getElementById('tableDraftItems');
   el.innerHTML = '';
@@ -2102,7 +2122,7 @@ function sendPosBillWhatsapp() {
   const gstOn = !!appSettings.gstEnabled;
   const gstPct = Number(appSettings.gstPercent || 0);
   const gstAmt = gstOn ? Math.round(base * (gstPct/100) * 100) / 100 : 0;
-  const total = Math.round((base + gstAmt) * 100) / 100;
+  const total = Math.round(base + gstAmt); // round to nearest ₹1 — subtotal/GST lines shown precisely above
   const tableLabel = (typeof selectedTable === 'string' && !/^\d+$/.test(String(selectedTable))) ? selectedTable : ('Table ' + selectedTable);
   const lines = [
     'FLAME AND FLAVOR',
@@ -2185,11 +2205,7 @@ async function printTableKOT() {
   const isCustom = typeof selectedTable === 'string' && !/^\d+$/.test(String(selectedTable));
   openPrintWindow(buildKOTHTML({
     tableLabel: isCustom ? selectedTable : ('Table ' + selectedTable),
-    customerName: t.customerName,
-    mobile: t.mobile,
-    guestCount: t.guestCount,
-    items: t.items,
-    timeLabel: new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})
+    items: t.items
   }));
 }
 
