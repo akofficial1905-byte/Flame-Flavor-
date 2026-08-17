@@ -2067,6 +2067,7 @@ function createCustomTable() {
 }
 
 function selectTable(n) {
+  if (String(selectedTable) !== String(n)) flushPendingCustomerSave();
   selectedTable = n;
   const t = tableOrders[n] || { tableNumber:String(n), customerName:'', mobile:'', guestCount:1, items:[], extraCharge:0 };
   tableOrders[n] = t;
@@ -2166,19 +2167,40 @@ window.onTableExtraChargeInput = onTableExtraChargeInput;
 // Keeps customer name / mobile / guest count synced into the draft and saved to the
 // server as the manager types — previously these fields only got saved as a side effect
 // of adding an item or clicking Draft, so a typed name could be silently lost if the
-// manager switched tables before either of those happened. Debounced so it doesn't fire
-// an API call on every keystroke.
+// manager switched tables before either of those happened.
+//
+// IMPORTANT: the debounced save explicitly targets the table it was scheduled for
+// (captured at typing time), not whatever `selectedTable` happens to be when the timer
+// fires — otherwise switching tables mid-debounce silently redirects the save to the
+// WRONG table, and the name typed on the original table is never actually sent to the
+// server. Switching tables also flushes any pending save immediately rather than
+// waiting out the rest of the debounce window.
 let customerFieldSaveDebounce = null;
+let pendingCustomerSaveTable = null;
+
 function onCustomerFieldInput() {
-  const t = tableOrders[selectedTable];
+  const targetTable = selectedTable;
+  const t = tableOrders[targetTable];
   t.customerName = document.getElementById('tableCustomerName').value;
   t.mobile = document.getElementById('tableCustomerMobile').value;
   t.guestCount = +document.getElementById('tableGuestCount').value || 1;
   renderTablesList(); // table button label (customer name) updates live
   clearTimeout(customerFieldSaveDebounce);
-  customerFieldSaveDebounce = setTimeout(autoSaveDraft, 600);
+  pendingCustomerSaveTable = targetTable;
+  customerFieldSaveDebounce = setTimeout(() => {
+    saveDraftForTable(targetTable);
+    pendingCustomerSaveTable = null;
+  }, 600);
 }
 window.onCustomerFieldInput = onCustomerFieldInput;
+
+function flushPendingCustomerSave() {
+  if (pendingCustomerSaveTable === null) return;
+  clearTimeout(customerFieldSaveDebounce);
+  saveDraftForTable(pendingCustomerSaveTable);
+  pendingCustomerSaveTable = null;
+}
+window.addEventListener('beforeunload', flushPendingCustomerSave);
 
 function changeQty(idx, delta) {
   const t = tableOrders[selectedTable];
@@ -2192,15 +2214,20 @@ function removeItem(idx) {
   renderTableDraft(); renderTablesList(); autoSaveDraft();
 }
 
-async function autoSaveDraft() {
-  const t = tableOrders[selectedTable];
-  const isCustom = typeof selectedTable === 'string' && !/^\d+$/.test(String(selectedTable));
+async function saveDraftForTable(tableNum) {
+  const t = tableOrders[tableNum];
+  if (!t) return;
+  const isCustom = typeof tableNum === 'string' && !/^\d+$/.test(String(tableNum));
   try {
     await apiFetch('/api/table-orders/save-draft', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ tableNumber: String(selectedTable), customerName: t.customerName||'', mobile: t.mobile||'', guestCount: t.guestCount||1, items: t.items, extraCharge: t.extraCharge||0, isCustom })
+      body: JSON.stringify({ tableNumber: String(tableNum), customerName: t.customerName||'', mobile: t.mobile||'', guestCount: t.guestCount||1, items: t.items, extraCharge: t.extraCharge||0, isCustom })
     });
   } catch(e) { console.warn('Draft auto-save failed',e); }
+}
+
+async function autoSaveDraft() {
+  return saveDraftForTable(selectedTable);
 }
 
 function clearTableOrder() {
