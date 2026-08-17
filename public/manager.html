@@ -818,10 +818,24 @@ function initSocket() {
     socket.on('tableDraftUpdated', payload => {
       if (!payload?.tableNumber) return;
       const key = /^[1-9]\d*$/.test(payload.tableNumber) && !payload.isCustom ? +payload.tableNumber : payload.tableNumber;
-      tableOrders[key] = { ...payload, items: payload.items || [] };
+      const isCurrentlyOpen = String(selectedTable) === String(key);
+      if (isCurrentlyOpen) {
+        // This device is actively viewing/editing this table — the server just echoed
+        // back a save (possibly this device's own, possibly slightly stale if it raced
+        // with more recent typing). Only sync items/extraCharge, which are safe to merge;
+        // never overwrite name/mobile/guests here or a just-typed name can get wiped by
+        // an older echo arriving after newer keystrokes. Those fields stay authoritative
+        // from this device's own inputs until the manager navigates away and back.
+        const existing = tableOrders[key] || { customerName:'', mobile:'', guestCount:1 };
+        tableOrders[key] = { ...existing, items: payload.items || [], extraCharge: payload.extraCharge ?? existing.extraCharge };
+        renderTableDraft();
+      } else {
+        // Not currently open on this device — safe to fully sync (e.g. updated from
+        // another manager device/tab).
+        tableOrders[key] = { ...payload, items: payload.items || [] };
+      }
       if (payload.isCustom && !customTableIds.includes(payload.tableNumber)) customTableIds.push(payload.tableNumber);
       renderTablesList();
-      if (String(selectedTable) === String(key)) renderTableDraft();
     });
     socket.on('tableDraftCleared', payload => {
       if (!payload?.tableNumber) return;
