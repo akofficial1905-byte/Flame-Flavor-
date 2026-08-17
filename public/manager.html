@@ -541,17 +541,17 @@
             <div class="pos-customer-grid">
               <div class="form-group autocomplete-wrap full-row" style="margin-bottom:0;">
                 <label class="form-label">Customer Name</label>
-                <input id="tableCustomerName" type="text" class="form-input" placeholder="Name" oninput="handleCustomerAutoComplete(this,'tableMobileField','tableCustomerName')" autocomplete="off"/>
+                <input id="tableCustomerName" type="text" class="form-input" placeholder="Name" oninput="handleCustomerAutoComplete(this,'tableMobileField','tableCustomerName'); onCustomerFieldInput();" autocomplete="off"/>
                 <div class="autocomplete-list" id="nameAcList"></div>
               </div>
               <div class="form-group autocomplete-wrap" style="margin-bottom:0;">
                 <label class="form-label">Mobile</label>
-                <input id="tableCustomerMobile" type="text" id2="tableMobileField" class="form-input" placeholder="Phone" oninput="handleCustomerAutoComplete(this,'tableCustomerName','tableCustomerMobile'); loadTableLedger();" autocomplete="off"/>
+                <input id="tableCustomerMobile" type="text" id2="tableMobileField" class="form-input" placeholder="Phone" oninput="handleCustomerAutoComplete(this,'tableCustomerName','tableCustomerMobile'); loadTableLedger(); onCustomerFieldInput();" autocomplete="off"/>
                 <div class="autocomplete-list" id="mobileAcList"></div>
               </div>
               <div class="form-group" style="margin-bottom:0;">
                 <label class="form-label">Guests</label>
-                <input id="tableGuestCount" type="number" class="form-input" min="1" value="1"/>
+                <input id="tableGuestCount" type="number" class="form-input" min="1" value="1" oninput="onCustomerFieldInput()"/>
               </div>
             </div>
 
@@ -2149,6 +2149,23 @@ function onTableExtraChargeInput() {
 }
 window.onTableExtraChargeInput = onTableExtraChargeInput;
 
+// Keeps customer name / mobile / guest count synced into the draft and saved to the
+// server as the manager types — previously these fields only got saved as a side effect
+// of adding an item or clicking Draft, so a typed name could be silently lost if the
+// manager switched tables before either of those happened. Debounced so it doesn't fire
+// an API call on every keystroke.
+let customerFieldSaveDebounce = null;
+function onCustomerFieldInput() {
+  const t = tableOrders[selectedTable];
+  t.customerName = document.getElementById('tableCustomerName').value;
+  t.mobile = document.getElementById('tableCustomerMobile').value;
+  t.guestCount = +document.getElementById('tableGuestCount').value || 1;
+  renderTablesList(); // table button label (customer name) updates live
+  clearTimeout(customerFieldSaveDebounce);
+  customerFieldSaveDebounce = setTimeout(autoSaveDraft, 600);
+}
+window.onCustomerFieldInput = onCustomerFieldInput;
+
 function changeQty(idx, delta) {
   const t = tableOrders[selectedTable];
   t.items[idx].qty += delta;
@@ -2375,6 +2392,8 @@ async function handleCustomerAutoComplete(inputEl, otherFieldId, listSuffix) {
           document.getElementById('mobileAcList').style.display='none';
           tableOrders[selectedTable].customerName = c.customerName||'';
           tableOrders[selectedTable].mobile = c.mobile||'';
+          renderTablesList();
+          autoSaveDraft();
           loadTableLedger();
         };
         list.appendChild(item);
