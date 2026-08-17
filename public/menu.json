@@ -1,7 +1,7 @@
 {
   "Burgers (Veg)": [
-    { "name": "Veg. Tikki Burger", "image": "/veg-tikki-burger.jpg", "available": true, "variants": { "Plate": 60 } },
-    { "name": "Veg. Tikki with Cheese", "image": "/veg-tikki-with-cheese.jpg", "available": true, "variants": { "Plate": 80 } }
+    { "name": "Veg. Tikki Burger", "image": "/veg-tikki-burger.jpg.png", "available": true, "variants": { "Plate": 60 } },
+    { "name": "Veg. Tikki with Cheese", "image": "/veg-tikki-with-cheese.jpg.png", "available": true, "variants": { "Plate": 80 } }
   ],
   "Burgers (Chicken)": [
     { "name": "Classic Chicken Burger", "image": "/classic-chicken-burger.jpg", "available": true, "variants": { "Plate": 90 } },
