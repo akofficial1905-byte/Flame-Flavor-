@@ -212,7 +212,7 @@ function computeOrderTotals(items, extraCharge, settings) {
   const gstEnabled = !!(settings && settings.gstEnabled);
   const gstPercent = gstEnabled ? Number(settings.gstPercent || 0) : 0;
   const gstAmount  = gstEnabled ? Math.round(base * (gstPercent / 100) * 100) / 100 : 0;
-  const total = Math.round((base + gstAmount) * 100) / 100;
+  const total = Math.round(base + gstAmount); // round to nearest ₹1 for the payable total — subtotal/GST kept precise above for records
   return {
     subtotal, extraCharge: ec, gstEnabled, gstPercent, gstAmount,
     gstin: gstEnabled ? (settings.gstin || "") : "", total
@@ -506,7 +506,7 @@ app.patch("/api/orders/:id", async (req, res) => {
       update.subtotal    = subtotal;
       update.extraCharge = Math.max(0, extraCharge);
       update.gstAmount   = gstAmount;
-      update.total       = Math.round((base + gstAmount) * 100) / 100;
+      update.total       = Math.round(base + gstAmount);
     }
 
     const order = await Order.findByIdAndUpdate(req.params.id, { $set: update }, { new: true });
@@ -777,7 +777,7 @@ app.post("/api/table-orders/finalize", async (req, res) => {
       gstAmount:       totals.gstAmount,
       gstin:           totals.gstin,
       ledgerApplied,
-      total:           Math.round((totals.total - ledgerApplied) * 100) / 100,
+      total:           Math.round(totals.total - ledgerApplied),
       paymentMethod:   "PAYLATERDINEIN",
       paymentVerified: false,
       isDraft:         false,
