@@ -1481,18 +1481,57 @@ function buildReceiptHTML(o) {
   </body></html>`;
 }
 
-// Guards against double-printing: some browsers fire the popup's onload event AND
-// leave it pending, so without a guard both the onload handler and the fallback
-// timeout below would each call print(), opening two print dialogs / wasting paper.
+// Prints via a hidden iframe instead of opening a new tab/window — the browser's
+// print dialog (which has its own built-in preview pane) appears directly, with no
+// tab flashing open first.
+//
+// Print jobs run through a queue, one at a time: when KOT + receipt print back-to-back
+// (e.g. for takeaway/delivery), firing two print() calls almost simultaneously risks
+// them colliding, since most browsers only show one modal print dialog at once. Each
+// job waits for the previous dialog to actually close (via onafterprint, with a
+// timeout fallback in case a browser/driver doesn't fire it) before the next one opens.
+let printQueue = [];
+let printQueueBusy = false;
+
 function openPrintWindow(html) {
-  const w = window.open('', '_blank');
-  if (!w) { alert('Please allow pop-ups to print.'); return; }
-  w.document.write(html);
-  w.document.close();
-  let printed = false;
-  const doPrint = () => { if (printed) return; printed = true; try { w.print(); } catch(e) {} };
-  w.onload = doPrint;
-  setTimeout(doPrint, 300); // fallback only fires if onload never did
+  printQueue.push(html);
+  processPrintQueue();
+}
+
+function processPrintQueue() {
+  if (printQueueBusy || !printQueue.length) return;
+  printQueueBusy = true;
+  const html = printQueue.shift();
+
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+  document.body.appendChild(iframe);
+  const doc = iframe.contentWindow.document;
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  let finished = false;
+  const finishJob = () => {
+    if (finished) return;
+    finished = true;
+    if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    printQueueBusy = false;
+    processPrintQueue(); // start the next queued job, if any
+  };
+
+  // Brief delay so fonts/layout are ready before the print dialog opens.
+  setTimeout(() => {
+    try {
+      iframe.contentWindow.onafterprint = finishJob;
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    } catch(e) {
+      console.error('Print failed', e);
+      finishJob();
+    }
+    setTimeout(finishJob, 4000); // fallback if onafterprint never fires
+  }, 200);
 }
 
 // Kitchen copy — stripped to the bare minimum: table number (or order type for
