@@ -1323,15 +1323,16 @@ async function quickPrintReceipt(orderId) {
     const o = await apiFetch(`/api/orders/${orderId}`);
     currentPrintOrder = o;
     currentPrintOrderId = orderId;
-    openPrintWindow(buildReceiptHTML(o));
     // Takeaway/delivery orders have no separate "send to kitchen" step before billing
     // (unlike dine-in, which already prints a KOT during POS ordering) — so printing
-    // the bill also prints the kitchen ticket, or the kitchen would never see it at all.
+    // the bill also prints the kitchen ticket first, so the kitchen isn't left waiting
+    // on the customer-facing receipt to finish before they even see the order.
     // Fired synchronously (not delayed) so both stay within the same click's user-gesture
     // window — a setTimeout delay here risks the second popup getting blocked.
     if (o.orderType === 'takeaway' || o.orderType === 'delivery') {
-      openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [] }));
+      openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [], address: o.address }));
     }
+    openPrintWindow(buildReceiptHTML(o));
   } catch(e) { alert('Could not print: '+e.message); }
 }
 window.quickPrintReceipt = quickPrintReceipt;
@@ -1341,7 +1342,7 @@ async function quickPrintKOT(orderId) {
     const o = await apiFetch(`/api/orders/${orderId}`);
     currentPrintOrder = o;
     currentPrintOrderId = orderId;
-    openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [] }));
+    openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [], address: o.address }));
   } catch(e) { alert('Could not print: '+e.message); }
 }
 window.quickPrintKOT = quickPrintKOT;
@@ -1391,14 +1392,14 @@ const PRINT_DOC_STYLES = `
   *{box-sizing:border-box;}
   html,body{width:100%;margin:0;}
   body{font-family:'Segoe UI',Arial,sans-serif;padding:0 2px;color:#000;font-size:11px;}
-  .p-header-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px;gap:6px;}
-  .p-brand h1{font-size:13px;margin:0;letter-spacing:.5px;font-weight:800;line-height:1.15;}
-  .p-brand .p-doctype{font-size:8px;margin-top:1px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;}
-  .p-header-right{text-align:right;font-size:8.5px;line-height:1.3;flex-shrink:0;}
-  .p-order-type{font-weight:800;text-transform:uppercase;letter-spacing:.3px;}
-  .p-date{color:#333;}
+  .p-brand-center{text-align:center;margin-bottom:1px;}
+  .p-brand-center h1{font-size:14px;margin:0;letter-spacing:.5px;font-weight:800;line-height:1.15;}
+  .p-gstin-center{text-align:center;font-size:8.5px;color:#333;margin-top:1px;}
   .p-divider{border:none;border-top:1.3px dashed #000;margin:3px 0;}
-  .p-meta{font-size:10px;margin:3px 0;}
+  .p-info-row{display:flex;justify-content:space-between;gap:8px;font-size:10px;margin-bottom:1.5px;}
+  .p-info-row .p-strong{font-weight:800;}
+  .p-info-row .p-right{text-align:right;}
+  .p-meta{font-size:10px;margin:2px 0;}
   .p-meta-row{display:flex;justify-content:space-between;gap:8px;margin-bottom:1.5px;}
   .p-meta-row b{font-weight:700;text-align:right;}
   table.p-items{width:100%;border-collapse:collapse;font-size:10.5px;margin-top:3px;}
@@ -1410,8 +1411,10 @@ const PRINT_DOC_STYLES = `
   .p-totals-row{display:flex;justify-content:space-between;padding:1px 0;}
   .p-grand{display:flex;justify-content:space-between;font-size:14px;font-weight:800;border-top:1.8px solid #000;margin-top:3px;padding-top:3px;}
   .p-footer{text-align:center;margin-top:6px;font-size:9.5px;font-weight:700;}
-  .p-kot-item{font-size:13px;font-weight:700;padding:3px 0;border-bottom:1px dashed #999;display:flex;justify-content:space-between;}
-  .p-kot-item .p-kot-variant{font-size:9.5px;font-weight:500;display:block;}
+  .p-kot-item{font-size:11px;font-weight:700;padding:2.5px 0;border-bottom:1px dashed #999;display:flex;justify-content:space-between;}
+  .p-kot-item .p-kot-variant{font-size:8.5px;font-weight:500;display:block;}
+  .p-kot-header{font-size:13px;font-weight:800;letter-spacing:.2px;}
+  .p-kot-address{font-size:9px;color:#333;margin-top:1px;}
 `;
 
 function orderTypeLabel(o) {
@@ -1435,34 +1438,37 @@ function buildReceiptHTML(o) {
       <td class="p-num">₹${i.price*i.qty}</td>
     </tr>`).join('');
 
-  // Minimal by design: brand, GSTIN, name, mobile, and table (dine-in) OR address
-  // (delivery/takeaway) — no order #, no payment-status line, to keep the paper short.
-  // Order type + date live in the header's right corner rather than adding new lines.
-  const metaRows = [
-    o.gstin ? ['GSTIN', o.gstin] : null,
-    ['Name', o.customerName || 'N/A'],
-    o.mobile ? ['Mobile', o.mobile] : null,
-    (o.orderType === 'dinein' && o.tableNumber) ? ['Table', o.tableNumber]
-      : (o.orderType !== 'dinein' && o.address) ? ['Address', o.address] : null
-  ].filter(Boolean).map(([k,v]) => `<div class="p-meta-row"><span>${esc(k)}</span><b>${esc(String(v))}</b></div>`).join('');
+  // Table (dine-in) OR address (takeaway/delivery) — its own line below the paired info block.
+  const locationRow = (o.orderType === 'dinein' && o.tableNumber)
+    ? `<div class="p-meta-row"><span>Table</span><b>${esc(o.tableNumber)}</b></div>`
+    : (o.orderType !== 'dinein' && o.address)
+      ? `<div class="p-meta-row"><span>Address</span><b>${esc(o.address)}</b></div>` : '';
+
+  // GST split into CGST + SGST (half each) when enabled — standard Indian tax invoice format.
+  const gstRows = (o.gstEnabled && o.gstAmount)
+    ? (() => {
+        const halfPct = (o.gstPercent || 0) / 2;
+        const halfAmt = Math.round((o.gstAmount / 2) * 100) / 100;
+        return `<div class="p-totals-row"><span>CGST (${halfPct}%)</span><span>₹${halfAmt}</span></div>
+                <div class="p-totals-row"><span>SGST (${halfPct}%)</span><span>₹${halfAmt}</span></div>`;
+      })()
+    : '';
 
   const totalsRows = [
     o.subtotal ? `<div class="p-totals-row"><span>Subtotal</span><span>₹${o.subtotal}</span></div>` : '',
     o.extraCharge ? `<div class="p-totals-row"><span>${esc(o.extraChargeNote||'Extra Charge')}</span><span>₹${o.extraCharge}</span></div>` : '',
-    (o.gstEnabled && o.gstAmount) ? `<div class="p-totals-row"><span>GST (${o.gstPercent}%)</span><span>₹${o.gstAmount}</span></div>` : '',
+    gstRows,
     o.ledgerApplied ? `<div class="p-totals-row"><span>Balance Applied</span><span>-₹${o.ledgerApplied}</span></div>` : ''
   ].join('');
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Receipt</title><style>${PRINT_DOC_STYLES}</style></head><body>
-    <div class="p-header-row">
-      <div class="p-brand"><h1>FLAME AND FLAVOR</h1></div>
-      <div class="p-header-right">
-        <div class="p-order-type">${esc(orderTypeLabel(o))}</div>
-        <div class="p-date">${esc(fmtShortDateTime(o.createdAt))}</div>
-      </div>
-    </div>
+    <div class="p-brand-center"><h1>FLAME AND FLAVOR</h1></div>
+    ${o.gstin ? `<div class="p-gstin-center">GSTIN: ${esc(o.gstin)}</div>` : ''}
     <hr class="p-divider">
-    <div class="p-meta">${metaRows}</div>
+    <div class="p-info-row"><span class="p-strong">${esc(o.customerName || 'N/A')}</span><span class="p-strong p-right">${esc(orderTypeLabel(o))}</span></div>
+    <div class="p-info-row"><span>${esc(o.mobile || '')}</span><span class="p-right">${esc(fmtShortDateTime(o.createdAt))}</span></div>
+    ${locationRow}
+    <hr class="p-divider">
     <table class="p-items">
       <thead><tr><th>Item</th><th class="p-num">Qty</th><th class="p-num">Amt</th></tr></thead>
       <tbody>${itemRows}</tbody>
@@ -1498,12 +1504,14 @@ function kotLabelFor(o) {
   return (o.orderType || '').toUpperCase();
 }
 
-function buildKOTHTML({ tableLabel, items }) {
+function buildKOTHTML({ tableLabel, items, address }) {
   const itemRows = (items||[]).map(i => `
     <div class="p-kot-item"><span>${esc(i.name)}${i.variant ? `<span class="p-kot-variant">${esc(i.variant)}</span>` : ''}</span><span>x${i.qty}</span></div>`).join('');
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>KOT</title><style>${PRINT_DOC_STYLES}</style></head><body>
-    ${tableLabel ? `<div class="p-brand"><h1>${esc(tableLabel)}</h1></div><hr class="p-divider">` : ''}
+    ${tableLabel ? `<div class="p-kot-header">${esc(tableLabel)}</div>` : ''}
+    ${address ? `<div class="p-kot-address">${esc(address)}</div>` : ''}
+    <hr class="p-divider">
     <div>${itemRows}</div>
   </body></html>`;
 }
@@ -1511,16 +1519,16 @@ function buildKOTHTML({ tableLabel, items }) {
 function doPrintReceipt() {
   if (!currentPrintOrder) { alert('Open a print preview first.'); return; }
   const o = currentPrintOrder;
-  openPrintWindow(buildReceiptHTML(o));
   if (o.orderType === 'takeaway' || o.orderType === 'delivery') {
-    openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [] }));
+    openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [], address: o.address }));
   }
+  openPrintWindow(buildReceiptHTML(o));
 }
 
 async function doPrintKOT() {
   if (!currentPrintOrder) return;
   const o = currentPrintOrder;
-  openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [] }));
+  openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [], address: o.address }));
 }
 
 // ─────────────────────────────── SEND BILL VIA WHATSAPP ──────────────
@@ -2384,7 +2392,7 @@ async function printTableKOT() {
   } else {
     label = posOrderType.toUpperCase();
   }
-  openPrintWindow(buildKOTHTML({ tableLabel: label, items: t.items }));
+  openPrintWindow(buildKOTHTML({ tableLabel: label, items: t.items, address: posOrderType === 'delivery' ? t.address : '' }));
 }
 
 async function finalizeTableOrder() {
@@ -2461,8 +2469,8 @@ async function finalizeQuickOrder() {
       body: JSON.stringify(payload)
     });
     if (data.success && data.order) {
+      openPrintWindow(buildKOTHTML({ tableLabel: posOrderType.toUpperCase(), items: data.order.items || [], address: data.order.address }));
       openPrintWindow(buildReceiptHTML(data.order));
-      openPrintWindow(buildKOTHTML({ tableLabel: posOrderType.toUpperCase(), items: data.order.items || [] }));
       posQuickOrderDraft = { customerName:'', mobile:'', address:'', guestCount:1, items:[], extraCharge:0 };
       loadDraftIntoInputs();
       renderTableDraft();
