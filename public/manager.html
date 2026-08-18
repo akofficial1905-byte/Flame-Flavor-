@@ -134,6 +134,8 @@
     .table-btn.occupied .tn{color:#92400E;}
     .table-btn.active{background:var(--navy);color:#fff;border-color:var(--navy);}
     .table-btn.custom-table{border-style:dashed;}
+    .order-type-btn{background:#fff;color:var(--navy);border:1.5px solid var(--border);font-weight:700;}
+    .order-type-btn.active{background:var(--navy);color:#fff;border-color:var(--navy);}
     .table-btn .tn{font-size:1rem;font-weight:700;}
     .table-btn .ts{font-size:.65rem;opacity:.8;}
     .pos-section-label{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--navy);margin:0 0 .6rem;padding-bottom:.4rem;border-bottom:2px solid var(--border);}
@@ -497,7 +499,14 @@
 
       <!-- ═══════════ TABLES / POS ═══════════ -->
       <div id="tablesTab" class="tab-content active">
-        <!-- Table selector row -->
+        <!-- Order type selector — lets the manager create Takeaway/Delivery bills directly, not just Dine-In -->
+        <div id="posOrderTypeBar" style="display:flex;gap:.5rem;padding:.6rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface2);">
+          <button class="btn btn-sm order-type-btn active" data-type="dinein" onclick="setPosOrderType('dinein')">🍽️ Dine-In</button>
+          <button class="btn btn-sm order-type-btn" data-type="takeaway" onclick="setPosOrderType('takeaway')">🥡 Takeaway</button>
+          <button class="btn btn-sm order-type-btn" data-type="delivery" onclick="setPosOrderType('delivery')">🚴 Delivery</button>
+        </div>
+
+        <!-- Table selector row (Dine-In only) -->
         <div class="tables-row" id="tablesList"></div>
 
         <!-- Action toolbar — sits at the table-selector line, always visible regardless of scroll -->
@@ -505,7 +514,7 @@
           <div style="font-size:1.3rem;font-weight:800;color:var(--navy);" id="selectedTableTitle">Table 1</div>
           <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
             <button class="btn btn-secondary btn-sm" onclick="clearTableOrder()">🗑 Clear</button>
-            <button class="btn btn-warning btn-sm" onclick="saveDraftTable()">💾 Draft</button>
+            <button class="btn btn-warning btn-sm" id="posDraftBtn" onclick="saveDraftTable()">💾 Draft</button>
             <button class="btn btn-info btn-sm" onclick="printTableKOT()">🎫 KOT</button>
             <button class="btn btn-success btn-sm" onclick="sendPosBillWhatsapp()">💬 WhatsApp</button>
             <button class="btn btn-primary btn-sm" onclick="finalizeTableOrder()">🖨 Save &amp; Print Bill</button>
@@ -549,9 +558,13 @@
                 <input id="tableCustomerMobile" type="text" id2="tableMobileField" class="form-input" placeholder="Phone" oninput="handleCustomerAutoComplete(this,'tableCustomerName','tableCustomerMobile'); loadTableLedger(); onCustomerFieldInput();" autocomplete="off"/>
                 <div class="autocomplete-list" id="mobileAcList"></div>
               </div>
-              <div class="form-group" style="margin-bottom:0;">
+              <div class="form-group" id="tableGuestWrap" style="margin-bottom:0;">
                 <label class="form-label">Guests</label>
                 <input id="tableGuestCount" type="number" class="form-input" min="1" value="1" oninput="onCustomerFieldInput()"/>
+              </div>
+              <div class="form-group full-row" id="posAddressWrap" style="margin-bottom:0;display:none;">
+                <label class="form-label">Delivery Address</label>
+                <textarea id="posAddressInput" class="form-input" rows="2" placeholder="Address / landmark" oninput="onCustomerFieldInput()"></textarea>
               </div>
             </div>
 
@@ -774,6 +787,19 @@ let customTableIds = []; // list of custom/unorganized table identifiers (string
 let currentLedgerBalance = 0;
 let appSettings = { gstEnabled:false, gstin:'', gstPercent:5, deliveryChargeEnabled:false, deliveryCharge:0, takeawayChargeEnabled:false, takeawayCharge:0 };
 
+// ─── Order type in Dine-In POS: lets the manager create Takeaway/Delivery bills
+// directly (phone-in orders, counter walk-ins) using the same menu/billing UI,
+// not just Dine-In table orders. ───
+let posOrderType = 'dinein'; // 'dinein' | 'takeaway' | 'delivery'
+let posQuickOrderDraft = { customerName:'', mobile:'', address:'', guestCount:1, items:[], extraCharge:0 };
+function getCurrentDraft() {
+  return posOrderType === 'dinein' ? tableOrders[selectedTable] : posQuickOrderDraft;
+}
+// Suppresses this device's own new-order alarm/popup for a quick takeaway/delivery
+// order it just created itself — the manager is already looking right at the print
+// output, they don't need the escalating alarm going off at them for their own order.
+let suppressNextOwnOrderAlert = false;
+
 let serviceRequests = [];
 let lastIncomingCount = 0;
 
@@ -810,6 +836,7 @@ function initSocket() {
     socket = io();
     socket.on('newOrder', (order) => {
       fetchOrders();
+      if (suppressNextOwnOrderAlert) { suppressNextOwnOrderAlert = false; return; }
       triggerNewOrderAlert();
       if (order && order.orderType !== 'dinein') showOrderPopup(order);
     });
@@ -1297,6 +1324,14 @@ async function quickPrintReceipt(orderId) {
     currentPrintOrder = o;
     currentPrintOrderId = orderId;
     openPrintWindow(buildReceiptHTML(o));
+    // Takeaway/delivery orders have no separate "send to kitchen" step before billing
+    // (unlike dine-in, which already prints a KOT during POS ordering) — so printing
+    // the bill also prints the kitchen ticket, or the kitchen would never see it at all.
+    // Fired synchronously (not delayed) so both stay within the same click's user-gesture
+    // window — a setTimeout delay here risks the second popup getting blocked.
+    if (o.orderType === 'takeaway' || o.orderType === 'delivery') {
+      openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [] }));
+    }
   } catch(e) { alert('Could not print: '+e.message); }
 }
 window.quickPrintReceipt = quickPrintReceipt;
@@ -1352,29 +1387,45 @@ function buildReceiptText(o) {
 // Sized for standard 80mm thermal restaurant-billing roll paper, not A4 —
 // @page controls the physical roll width so nothing gets stranded on a big blank sheet.
 const PRINT_DOC_STYLES = `
-  @page { size: 80mm auto; margin: 2mm 2mm; }
+  @page { size: 80mm auto; margin: 1.5mm 2mm; }
   *{box-sizing:border-box;}
   html,body{width:100%;margin:0;}
-  body{font-family:'Segoe UI',Arial,sans-serif;padding:0 2px;color:#000;font-size:12px;}
-  .p-brand{text-align:center;margin-bottom:5px;}
-  .p-brand h1{font-size:17px;margin:0;letter-spacing:1px;font-weight:800;}
-  .p-brand .p-doctype{font-size:9.5px;margin-top:2px;text-transform:uppercase;letter-spacing:1px;font-weight:700;}
-  .p-divider{border:none;border-top:1.5px dashed #000;margin:5px 0;}
-  .p-meta{font-size:11px;margin:4px 0;}
-  .p-meta-row{display:flex;justify-content:space-between;gap:8px;margin-bottom:2px;}
+  body{font-family:'Segoe UI',Arial,sans-serif;padding:0 2px;color:#000;font-size:11px;}
+  .p-header-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px;gap:6px;}
+  .p-brand h1{font-size:13px;margin:0;letter-spacing:.5px;font-weight:800;line-height:1.15;}
+  .p-brand .p-doctype{font-size:8px;margin-top:1px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;}
+  .p-header-right{text-align:right;font-size:8.5px;line-height:1.3;flex-shrink:0;}
+  .p-order-type{font-weight:800;text-transform:uppercase;letter-spacing:.3px;}
+  .p-date{color:#333;}
+  .p-divider{border:none;border-top:1.3px dashed #000;margin:3px 0;}
+  .p-meta{font-size:10px;margin:3px 0;}
+  .p-meta-row{display:flex;justify-content:space-between;gap:8px;margin-bottom:1.5px;}
   .p-meta-row b{font-weight:700;text-align:right;}
-  table.p-items{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:4px;}
-  table.p-items th{text-align:left;border-bottom:1.5px solid #000;padding:3px 2px;font-size:9.5px;text-transform:uppercase;letter-spacing:.3px;}
+  table.p-items{width:100%;border-collapse:collapse;font-size:10.5px;margin-top:3px;}
+  table.p-items th{text-align:left;border-bottom:1.3px solid #000;padding:2px 2px;font-size:8.5px;text-transform:uppercase;letter-spacing:.2px;}
   table.p-items th.p-num, table.p-items td.p-num{text-align:right;}
-  table.p-items td{padding:3px 2px;border-bottom:1px dotted #999;vertical-align:top;}
-  .p-item-variant{font-size:9.5px;color:#333;}
-  .p-totals{margin-top:5px;font-size:11.5px;}
+  table.p-items td{padding:2px 2px;border-bottom:1px dotted #999;vertical-align:top;}
+  .p-item-variant{font-size:8.5px;color:#333;}
+  .p-totals{margin-top:3px;font-size:10.5px;}
   .p-totals-row{display:flex;justify-content:space-between;padding:1px 0;}
-  .p-grand{display:flex;justify-content:space-between;font-size:16px;font-weight:800;border-top:2px solid #000;margin-top:4px;padding-top:4px;}
-  .p-footer{text-align:center;margin-top:8px;font-size:11px;font-weight:700;}
-  .p-kot-item{font-size:15px;font-weight:700;padding:5px 0;border-bottom:1px dashed #999;display:flex;justify-content:space-between;}
-  .p-kot-item .p-kot-variant{font-size:11px;font-weight:500;display:block;}
+  .p-grand{display:flex;justify-content:space-between;font-size:14px;font-weight:800;border-top:1.8px solid #000;margin-top:3px;padding-top:3px;}
+  .p-footer{text-align:center;margin-top:6px;font-size:9.5px;font-weight:700;}
+  .p-kot-item{font-size:13px;font-weight:700;padding:3px 0;border-bottom:1px dashed #999;display:flex;justify-content:space-between;}
+  .p-kot-item .p-kot-variant{font-size:9.5px;font-weight:500;display:block;}
 `;
+
+function orderTypeLabel(o) {
+  const t = (o.orderType || '').toLowerCase();
+  if (t === 'dinein') return 'DINE IN';
+  if (t === 'takeaway') return 'TAKEAWAY';
+  if (t === 'delivery') return 'DELIVERY';
+  return t.toUpperCase();
+}
+
+function fmtShortDateTime(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleString('en-IN', { timeZone:'Asia/Kolkata', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+}
 
 function buildReceiptHTML(o) {
   const itemRows = (o.items||[]).map(i => `
@@ -1386,6 +1437,7 @@ function buildReceiptHTML(o) {
 
   // Minimal by design: brand, GSTIN, name, mobile, and table (dine-in) OR address
   // (delivery/takeaway) — no order #, no payment-status line, to keep the paper short.
+  // Order type + date live in the header's right corner rather than adding new lines.
   const metaRows = [
     o.gstin ? ['GSTIN', o.gstin] : null,
     ['Name', o.customerName || 'N/A'],
@@ -1402,7 +1454,13 @@ function buildReceiptHTML(o) {
   ].join('');
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Receipt</title><style>${PRINT_DOC_STYLES}</style></head><body>
-    <div class="p-brand"><h1>FLAME AND FLAVOR</h1></div>
+    <div class="p-header-row">
+      <div class="p-brand"><h1>FLAME AND FLAVOR</h1></div>
+      <div class="p-header-right">
+        <div class="p-order-type">${esc(orderTypeLabel(o))}</div>
+        <div class="p-date">${esc(fmtShortDateTime(o.createdAt))}</div>
+      </div>
+    </div>
     <hr class="p-divider">
     <div class="p-meta">${metaRows}</div>
     <table class="p-items">
@@ -1452,7 +1510,11 @@ function buildKOTHTML({ tableLabel, items }) {
 
 function doPrintReceipt() {
   if (!currentPrintOrder) { alert('Open a print preview first.'); return; }
-  openPrintWindow(buildReceiptHTML(currentPrintOrder));
+  const o = currentPrintOrder;
+  openPrintWindow(buildReceiptHTML(o));
+  if (o.orderType === 'takeaway' || o.orderType === 'delivery') {
+    openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [] }));
+  }
 }
 
 async function doPrintKOT() {
@@ -2010,13 +2072,12 @@ function openVariantPicker(item) {
 window.openVariantPicker = openVariantPicker;
 
 function addItemToDraft(item) {
-  const t = tableOrders[selectedTable];
+  const t = getCurrentDraft();
   const existing = t.items.find(x=>x.name===item.name && x.variant===item.variant);
   if (existing) existing.qty++;
   else t.items.push({ name:item.name, variant:item.variant, price:item.price, qty:1, category:item.category });
   renderTableDraft();
-  renderTablesList();
-  autoSaveDraft();
+  if (posOrderType === 'dinein') { renderTablesList(); autoSaveDraft(); }
 }
 
 function renderTablesList() {
@@ -2082,8 +2143,43 @@ function selectTable(n) {
   loadTableLedger();
 }
 
+// Switches Dine-In POS between creating a Dine-In table order vs a standalone
+// Takeaway/Delivery bill using the same menu-browsing and billing UI.
+function setPosOrderType(type) {
+  if (posOrderType === type) return;
+  flushPendingCustomerSave();
+  posOrderType = type;
+  document.querySelectorAll('.order-type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+  const isDinein = type === 'dinein';
+  document.getElementById('tablesList').style.display = isDinein ? 'flex' : 'none';
+  document.getElementById('pendingSection').style.display = (isDinein && pendingDineInReqs.length) ? 'block' : 'none';
+  document.getElementById('tableGuestWrap').style.display = isDinein ? 'block' : 'none';
+  document.getElementById('posAddressWrap').style.display = type === 'delivery' ? 'block' : 'none';
+  const draftBtn = document.getElementById('posDraftBtn');
+  if (draftBtn) draftBtn.style.display = isDinein ? 'inline-flex' : 'none';
+  loadDraftIntoInputs();
+  renderTableDraft();
+}
+window.setPosOrderType = setPosOrderType;
+
+function loadDraftIntoInputs() {
+  if (posOrderType === 'dinein') {
+    document.getElementById('selectedTableTitle').textContent =
+      (typeof selectedTable === 'string' && !/^\d+$/.test(String(selectedTable))) ? selectedTable : `Table ${selectedTable}`;
+  } else {
+    document.getElementById('selectedTableTitle').textContent = posOrderType === 'takeaway' ? 'New Takeaway Order' : 'New Delivery Order';
+  }
+  const t = getCurrentDraft();
+  document.getElementById('tableCustomerName').value = t.customerName || '';
+  document.getElementById('tableCustomerMobile').value = t.mobile || '';
+  document.getElementById('tableGuestCount').value = t.guestCount || 1;
+  document.getElementById('tableExtraCharge').value = t.extraCharge || 0;
+  const addrEl = document.getElementById('posAddressInput');
+  if (addrEl) addrEl.value = t.address || '';
+}
+
 function renderTableDraft() {
-  const t = tableOrders[selectedTable];
+  const t = getCurrentDraft();
   const itemsTotal = (t.items||[]).reduce((s,it)=>s+it.price*it.qty,0);
   const extra = Number(t.extraCharge||0);
   const base = itemsTotal + extra;
@@ -2127,7 +2223,7 @@ function renderTableDraft() {
 
 // ─────────────────────────────── SEND PRE-BILL VIA WHATSAPP (from POS, before finalize) ──
 function sendPosBillWhatsapp() {
-  const t = tableOrders[selectedTable];
+  const t = getCurrentDraft();
   if (!t || !t.items.length) { alert('Add items to the order first.'); return; }
   const mobile = String(document.getElementById('tableCustomerMobile').value || '').replace(/\D/g,'');
   if (!mobile) { alert('Enter the customer mobile number first.'); return; }
@@ -2138,10 +2234,12 @@ function sendPosBillWhatsapp() {
   const gstPct = Number(appSettings.gstPercent || 0);
   const gstAmt = gstOn ? Math.round(base * (gstPct/100) * 100) / 100 : 0;
   const total = Math.round(base + gstAmt); // round to nearest ₹1 — subtotal/GST lines shown precisely above
-  const tableLabel = (typeof selectedTable === 'string' && !/^\d+$/.test(String(selectedTable))) ? selectedTable : ('Table ' + selectedTable);
+  const orderLabel = posOrderType === 'dinein'
+    ? ((typeof selectedTable === 'string' && !/^\d+$/.test(String(selectedTable))) ? selectedTable : ('Table ' + selectedTable))
+    : posOrderType.toUpperCase();
   const lines = [
     'FLAME AND FLAVOR',
-    tableLabel,
+    orderLabel,
     '--------------------------------',
     ...t.items.map(i => `${i.name}${i.variant ? ' (' + i.variant + ')' : ''} x${i.qty} = ₹${i.price*i.qty}`),
     '--------------------------------',
@@ -2156,11 +2254,10 @@ function sendPosBillWhatsapp() {
 window.sendPosBillWhatsapp = sendPosBillWhatsapp;
 
 function onTableExtraChargeInput() {
-  const t = tableOrders[selectedTable];
+  const t = getCurrentDraft();
   t.extraCharge = +document.getElementById('tableExtraCharge').value || 0;
   renderTableDraft();
-  renderTablesList();
-  autoSaveDraft();
+  if (posOrderType === 'dinein') { renderTablesList(); autoSaveDraft(); }
 }
 window.onTableExtraChargeInput = onTableExtraChargeInput;
 
@@ -2175,10 +2272,21 @@ window.onTableExtraChargeInput = onTableExtraChargeInput;
 // WRONG table, and the name typed on the original table is never actually sent to the
 // server. Switching tables also flushes any pending save immediately rather than
 // waiting out the rest of the debounce window.
+//
+// For Takeaway/Delivery quick orders there's no server-side draft concept (they're
+// created in one shot at Save & Print), so those just update the in-memory draft.
 let customerFieldSaveDebounce = null;
 let pendingCustomerSaveTable = null;
 
 function onCustomerFieldInput() {
+  if (posOrderType !== 'dinein') {
+    const t = posQuickOrderDraft;
+    t.customerName = document.getElementById('tableCustomerName').value;
+    t.mobile = document.getElementById('tableCustomerMobile').value;
+    const addrEl = document.getElementById('posAddressInput');
+    if (addrEl) t.address = addrEl.value;
+    return;
+  }
   const targetTable = selectedTable;
   const t = tableOrders[targetTable];
   t.customerName = document.getElementById('tableCustomerName').value;
@@ -2203,15 +2311,17 @@ function flushPendingCustomerSave() {
 window.addEventListener('beforeunload', flushPendingCustomerSave);
 
 function changeQty(idx, delta) {
-  const t = tableOrders[selectedTable];
+  const t = getCurrentDraft();
   t.items[idx].qty += delta;
   if (t.items[idx].qty <= 0) t.items.splice(idx,1);
-  renderTableDraft(); renderTablesList(); autoSaveDraft();
+  renderTableDraft();
+  if (posOrderType === 'dinein') { renderTablesList(); autoSaveDraft(); }
 }
 
 function removeItem(idx) {
-  tableOrders[selectedTable].items.splice(idx,1);
-  renderTableDraft(); renderTablesList(); autoSaveDraft();
+  getCurrentDraft().items.splice(idx,1);
+  renderTableDraft();
+  if (posOrderType === 'dinein') { renderTablesList(); autoSaveDraft(); }
 }
 
 async function saveDraftForTable(tableNum) {
@@ -2231,6 +2341,13 @@ async function autoSaveDraft() {
 }
 
 function clearTableOrder() {
+  if (posOrderType !== 'dinein') {
+    if (!confirm('Clear this order?')) return;
+    posQuickOrderDraft = { customerName:'', mobile:'', address:'', guestCount:1, items:[], extraCharge:0 };
+    loadDraftIntoInputs();
+    renderTableDraft();
+    return;
+  }
   if (!confirm('Clear this table order?')) return;
   const wasCustom = typeof selectedTable === 'string' && !/^\d+$/.test(String(selectedTable));
   tableOrders[selectedTable] = { tableNumber: String(selectedTable), customerName:'', mobile:'', guestCount:1, items:[], extraCharge:0 };
@@ -2254,20 +2371,25 @@ async function saveDraftTable() {
 }
 
 async function printTableKOT() {
-  const t = tableOrders[selectedTable];
+  const t = getCurrentDraft();
   if (!t.items.length) { alert('No items in order'); return; }
   t.customerName = document.getElementById('tableCustomerName').value;
   t.mobile = document.getElementById('tableCustomerMobile').value;
-  t.guestCount = +document.getElementById('tableGuestCount').value||1;
-  await autoSaveDraft();
-  const isCustom = typeof selectedTable === 'string' && !/^\d+$/.test(String(selectedTable));
-  openPrintWindow(buildKOTHTML({
-    tableLabel: isCustom ? selectedTable : ('Table ' + selectedTable),
-    items: t.items
-  }));
+  let label;
+  if (posOrderType === 'dinein') {
+    t.guestCount = +document.getElementById('tableGuestCount').value||1;
+    await autoSaveDraft();
+    const isCustom = typeof selectedTable === 'string' && !/^\d+$/.test(String(selectedTable));
+    label = isCustom ? selectedTable : ('Table ' + selectedTable);
+  } else {
+    label = posOrderType.toUpperCase();
+  }
+  openPrintWindow(buildKOTHTML({ tableLabel: label, items: t.items }));
 }
 
 async function finalizeTableOrder() {
+  if (posOrderType !== 'dinein') return finalizeQuickOrder();
+
   const t = tableOrders[selectedTable];
   if (!t.items.length) { alert('No items in order'); return; }
   t.customerName = document.getElementById('tableCustomerName').value;
@@ -2306,6 +2428,53 @@ async function finalizeTableOrder() {
       fetchOrders();
     }
   } catch(e) { alert('Error: '+e.message); }
+}
+
+// Takeaway/Delivery quick order created directly from the manager POS (phone-in
+// orders, counter walk-ins) — goes through the same /api/orders endpoint the
+// customer portal itself uses, so it correctly picks up GST and any configured
+// delivery/takeaway charge exactly like an online order would.
+async function finalizeQuickOrder() {
+  const t = posQuickOrderDraft;
+  if (!t.items.length) { alert('No items in order'); return; }
+  t.customerName = document.getElementById('tableCustomerName').value;
+  t.mobile = document.getElementById('tableCustomerMobile').value;
+  if (posOrderType === 'delivery') t.address = document.getElementById('posAddressInput').value;
+  t.extraCharge = +document.getElementById('tableExtraCharge').value || 0;
+
+  if (!t.customerName.trim()) { alert('Enter the customer name.'); return; }
+  if (posOrderType === 'delivery' && !t.address.trim()) { alert('Enter the delivery address.'); return; }
+
+  const payload = {
+    orderType: posOrderType,
+    customerName: t.customerName,
+    mobile: t.mobile,
+    address: posOrderType === 'delivery' ? t.address : '',
+    items: t.items.map(i => ({ name:i.name, variant:i.variant||'', price:i.price, qty:i.qty, category:i.category||'' })),
+    paymentMethod: 'COD'
+  };
+
+  try {
+    suppressNextOwnOrderAlert = true; // this device created it — no need to alarm itself
+    const data = await apiFetch('/api/orders', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if (data.success && data.order) {
+      openPrintWindow(buildReceiptHTML(data.order));
+      openPrintWindow(buildKOTHTML({ tableLabel: posOrderType.toUpperCase(), items: data.order.items || [] }));
+      posQuickOrderDraft = { customerName:'', mobile:'', address:'', guestCount:1, items:[], extraCharge:0 };
+      loadDraftIntoInputs();
+      renderTableDraft();
+      fetchOrders();
+    } else {
+      suppressNextOwnOrderAlert = false;
+      alert(data.message || 'Could not create order.');
+    }
+  } catch(e) {
+    suppressNextOwnOrderAlert = false;
+    alert('Error: '+e.message);
+  }
 }
 
 // ─────────────────────────────── CUSTOMER LEDGER (advance / dues) ─────
