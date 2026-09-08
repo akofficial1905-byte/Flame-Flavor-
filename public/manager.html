@@ -78,6 +78,12 @@
     .form-label{display:block;font-size:.78rem;font-weight:600;color:var(--text);margin-bottom:.3rem;}
     .form-input,.form-select{width:100%;padding:.6rem .75rem;border:1px solid var(--border);border-radius:7px;font-size:.88rem;background:#fff;color:var(--text);transition:all .15s;font-family:inherit;}
     .form-input:focus,.form-select:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 3px rgba(26,43,66,.1);}
+    /* Removes the number-input spin buttons everywhere — on a laptop trackpad, hovering + a small
+       scroll over a number field silently increments/decrements it, which is an easy way to
+       accidentally change a price/charge/quantity without noticing. Typing is still fully normal. */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+    input[type=number]{-moz-appearance:textfield;}
 
     /* ── BADGES ── */
     .badge{display:inline-block;padding:.25rem .6rem;border-radius:5px;font-size:.65rem;font-weight:700;text-transform:uppercase;}
@@ -132,6 +138,8 @@
     .table-btn:hover{border-color:var(--amber);}
     .table-btn.occupied{background:#FEF3C7;border-color:var(--warn);}
     .table-btn.occupied .tn{color:#92400E;}
+    .table-btn .ts.amt{font-weight:800;color:#92400E;background:rgba(217,119,6,.15);padding:1px 7px;border-radius:5px;display:inline-block;margin-top:2px;}
+    .table-btn.active .ts.amt{color:#fff;background:rgba(255,255,255,.2);}
     .table-btn.active{background:var(--navy);color:#fff;border-color:var(--navy);}
     .table-btn.custom-table{border-style:dashed;}
     .order-type-btn{background:#fff;color:var(--navy);border:1.5px solid var(--border);font-weight:700;}
@@ -511,7 +519,10 @@
 
         <!-- Action toolbar — sits at the table-selector line, always visible regardless of scroll -->
         <div id="posActionBar" style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.7rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;background:var(--surface);">
-          <div style="font-size:1.3rem;font-weight:800;color:var(--navy);" id="selectedTableTitle">Table 1</div>
+          <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
+            <div style="font-size:1.3rem;font-weight:800;color:var(--navy);" id="selectedTableTitle">Table 1</div>
+            <select id="tableMoveSelect" class="form-select" style="width:auto;font-size:.8rem;padding:.35rem .6rem;display:none;" onchange="moveCurrentTable(this.value)" title="Move this order to a different table"></select>
+          </div>
           <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
             <button class="btn btn-secondary btn-sm" onclick="clearTableOrder()">🗑 Clear</button>
             <button class="btn btn-warning btn-sm" id="posDraftBtn" onclick="saveDraftTable()">💾 Draft</button>
@@ -1330,7 +1341,7 @@ async function quickPrintReceipt(orderId) {
     // Fired synchronously (not delayed) so both stay within the same click's user-gesture
     // window — a setTimeout delay here risks the second popup getting blocked.
     if (o.orderType === 'takeaway' || o.orderType === 'delivery') {
-      openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [], address: o.address }));
+      openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [], address: o.address, billNumber: o.billNumber }));
     }
     openPrintWindow(buildReceiptHTML(o));
   } catch(e) { alert('Could not print: '+e.message); }
@@ -1342,7 +1353,7 @@ async function quickPrintKOT(orderId) {
     const o = await apiFetch(`/api/orders/${orderId}`);
     currentPrintOrder = o;
     currentPrintOrderId = orderId;
-    openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [], address: o.address }));
+    openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [], address: o.address, billNumber: o.billNumber }));
   } catch(e) { alert('Could not print: '+e.message); }
 }
 window.quickPrintKOT = quickPrintKOT;
@@ -1464,6 +1475,7 @@ function buildReceiptHTML(o) {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Receipt</title><style>${PRINT_DOC_STYLES}</style></head><body>
     <div class="p-brand-center"><h1>FLAME AND FLAVOR</h1></div>
     ${o.gstin ? `<div class="p-gstin-center">GSTIN: ${esc(o.gstin)}</div>` : ''}
+    ${o.billNumber ? `<div class="p-gstin-center" style="font-weight:800;color:#000;">Bill No: ${o.billNumber}</div>` : ''}
     <hr class="p-divider">
     <div class="p-info-row"><span class="p-strong">${esc(o.customerName || 'N/A')}</span><span class="p-strong p-right">${esc(orderTypeLabel(o))}</span></div>
     <div class="p-info-row"><span>${esc(o.mobile || '')}</span><span class="p-right">${esc(fmtShortDateTime(o.createdAt))}</span></div>
@@ -1543,12 +1555,13 @@ function kotLabelFor(o) {
   return (o.orderType || '').toUpperCase();
 }
 
-function buildKOTHTML({ tableLabel, items, address }) {
+function buildKOTHTML({ tableLabel, items, address, billNumber }) {
   const itemRows = (items||[]).map(i => `
     <div class="p-kot-item"><span>${esc(i.name)}${i.variant ? `<span class="p-kot-variant">${esc(i.variant)}</span>` : ''}</span><span>x${i.qty}</span></div>`).join('');
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>KOT</title><style>${PRINT_DOC_STYLES}</style></head><body>
     ${tableLabel ? `<div class="p-kot-header">${esc(tableLabel)}</div>` : ''}
+    ${billNumber ? `<div class="p-kot-address" style="font-weight:800;color:#000;">Bill No: ${billNumber}</div>` : ''}
     ${address ? `<div class="p-kot-address">${esc(address)}</div>` : ''}
     <hr class="p-divider">
     <div>${itemRows}</div>
@@ -1559,7 +1572,7 @@ function doPrintReceipt() {
   if (!currentPrintOrder) { alert('Open a print preview first.'); return; }
   const o = currentPrintOrder;
   if (o.orderType === 'takeaway' || o.orderType === 'delivery') {
-    openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [], address: o.address }));
+    openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [], address: o.address, billNumber: o.billNumber }));
   }
   openPrintWindow(buildReceiptHTML(o));
 }
@@ -1567,7 +1580,7 @@ function doPrintReceipt() {
 async function doPrintKOT() {
   if (!currentPrintOrder) return;
   const o = currentPrintOrder;
-  openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [], address: o.address }));
+  openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [], address: o.address, billNumber: o.billNumber }));
 }
 
 // ─────────────────────────────── SEND BILL VIA WHATSAPP ──────────────
@@ -2138,7 +2151,7 @@ function renderTablesList() {
     const isOccupied = (t.items||[]).length > 0;
     const btn = document.createElement('button');
     btn.className = 'table-btn' + (isSelected ? ' active' : (isOccupied ? ' occupied' : ''));
-    btn.innerHTML = `<div class="tn">T${i}</div><div class="ts">${esc(t.customerName||'Empty')}</div><div class="ts">₹${total}</div>`;
+    btn.innerHTML = `<div class="tn">T${i}</div><div class="ts">${esc(t.customerName||'')}</div><div class="ts${isOccupied?' amt':''}">₹${total}</div>`;
     btn.onclick = () => selectTable(i);
     list.appendChild(btn);
   }
@@ -2150,7 +2163,7 @@ function renderTablesList() {
     const isOccupied = (t.items||[]).length > 0;
     const btn = document.createElement('button');
     btn.className = 'table-btn custom-table' + (isSelected ? ' active' : (isOccupied ? ' occupied' : ''));
-    btn.innerHTML = `<div class="tn">${esc(id)}</div><div class="ts">${esc(t.customerName||'Walk-in')}</div><div class="ts">₹${total}</div>`;
+    btn.innerHTML = `<div class="tn">${esc(id)}</div><div class="ts">${esc(t.customerName||'Walk-in')}</div><div class="ts${isOccupied?' amt':''}">₹${total}</div>`;
     btn.onclick = () => selectTable(id);
     list.appendChild(btn);
   });
@@ -2188,7 +2201,78 @@ function selectTable(n) {
   renderTablesList();
   renderTableDraft();
   loadTableLedger();
+  renderTableMoveDropdown();
 }
+
+// Table-move dropdown — lets the manager relocate an in-progress dine-in order (name,
+// mobile, items, extra charge, reserved bill number, KOT tracking — everything) to a
+// different table without retyping anything, e.g. if a party physically moves seats.
+function renderTableMoveDropdown() {
+  const sel = document.getElementById('tableMoveSelect');
+  if (!sel) return;
+  if (posOrderType !== 'dinein') { sel.style.display = 'none'; return; }
+  sel.style.display = 'inline-block';
+  sel.innerHTML = '';
+  for (let i=1;i<=TABLECOUNT;i++) {
+    const opt = document.createElement('option');
+    opt.value = String(i);
+    opt.textContent = 'Move to Table ' + i;
+    sel.appendChild(opt);
+  }
+  customTableIds.forEach(id => {
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = 'Move to ' + id;
+    sel.appendChild(opt);
+  });
+  sel.value = String(selectedTable);
+}
+window.renderTableMoveDropdown = renderTableMoveDropdown;
+
+async function moveCurrentTable(newTableRaw) {
+  if (posOrderType !== 'dinein') return;
+  const newTable = /^[1-9]\d*$/.test(newTableRaw) ? +newTableRaw : newTableRaw;
+  if (String(newTable) === String(selectedTable)) return;
+
+  const destDraft = tableOrders[newTable];
+  const destOccupied = destDraft && (destDraft.items||[]).length > 0;
+  if (destOccupied) {
+    const destLabel = (typeof newTable === 'string' && !/^\d+$/.test(String(newTable))) ? newTable : ('Table ' + newTable);
+    if (!confirm(`${destLabel} already has an order. Moving here will overwrite it. Continue?`)) {
+      renderTableMoveDropdown();
+      return;
+    }
+  }
+
+  try {
+    const data = await apiFetch('/api/table-orders/move', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ fromTable: String(selectedTable), toTable: String(newTable) })
+    });
+    if (!data.success) { alert(data.error || 'Could not move table.'); renderTableMoveDropdown(); return; }
+
+    const movedContent = tableOrders[selectedTable];
+    const wasCustomOld = typeof selectedTable === 'string' && !/^\d+$/.test(String(selectedTable));
+    const isCustomNew = typeof newTable === 'string' && !/^\d+$/.test(String(newTable));
+
+    tableOrders[newTable] = { ...movedContent, tableNumber: String(newTable) };
+    if (isCustomNew && !customTableIds.includes(newTable)) customTableIds.push(newTable);
+
+    if (wasCustomOld) {
+      customTableIds = customTableIds.filter(id => id !== selectedTable);
+      delete tableOrders[selectedTable];
+    } else {
+      tableOrders[selectedTable] = { tableNumber: String(selectedTable), customerName:'', mobile:'', guestCount:1, items:[], extraCharge:0 };
+    }
+
+    renderTablesList();
+    selectTable(newTable);
+  } catch(e) {
+    alert('Could not move table: ' + e.message);
+    renderTableMoveDropdown();
+  }
+}
+window.moveCurrentTable = moveCurrentTable;
 
 // Switches Dine-In POS between creating a Dine-In table order vs a standalone
 // Takeaway/Delivery bill using the same menu-browsing and billing UI.
@@ -2206,6 +2290,7 @@ function setPosOrderType(type) {
   if (draftBtn) draftBtn.style.display = isDinein ? 'inline-flex' : 'none';
   loadDraftIntoInputs();
   renderTableDraft();
+  renderTableMoveDropdown();
 }
 window.setPosOrderType = setPosOrderType;
 
@@ -2422,16 +2507,31 @@ async function printTableKOT() {
   if (!t.items.length) { alert('No items in order'); return; }
   t.customerName = document.getElementById('tableCustomerName').value;
   t.mobile = document.getElementById('tableCustomerMobile').value;
-  let label;
+
   if (posOrderType === 'dinein') {
     t.guestCount = +document.getElementById('tableGuestCount').value||1;
     await autoSaveDraft();
     const isCustom = typeof selectedTable === 'string' && !/^\d+$/.test(String(selectedTable));
-    label = isCustom ? selectedTable : ('Table ' + selectedTable);
+    const label = isCustom ? selectedTable : ('Table ' + selectedTable);
+    try {
+      // Reserves this table's daily bill number on first call, and returns only the
+      // items that are new or increased in quantity since the last KOT for this table
+      // — so re-printing after adding more dishes mid-service doesn't resend the
+      // whole order to the kitchen, just what they haven't already started on.
+      const data = await apiFetch('/api/table-orders/kot-print', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ tableNumber: String(selectedTable), items: t.items })
+      });
+      if (!data.deltaItems || !data.deltaItems.length) {
+        alert('No new items since the last KOT for this table.');
+        return;
+      }
+      openPrintWindow(buildKOTHTML({ tableLabel: label, items: data.deltaItems, billNumber: data.billNumber }));
+    } catch(e) { alert('Could not print KOT: '+e.message); }
   } else {
-    label = posOrderType.toUpperCase();
+    const label = posOrderType.toUpperCase();
+    openPrintWindow(buildKOTHTML({ tableLabel: label, items: t.items, address: posOrderType === 'delivery' ? t.address : '' }));
   }
-  openPrintWindow(buildKOTHTML({ tableLabel: label, items: t.items, address: posOrderType === 'delivery' ? t.address : '' }));
 }
 
 async function finalizeTableOrder() {
@@ -2489,7 +2589,7 @@ async function finalizeQuickOrder() {
   if (posOrderType === 'delivery') t.address = document.getElementById('posAddressInput').value;
   t.extraCharge = +document.getElementById('tableExtraCharge').value || 0;
 
-  if (!t.customerName.trim()) { alert('Enter the customer name.'); return; }
+  if (posOrderType === 'delivery' && !t.customerName.trim()) { alert('Enter the customer name.'); return; }
   if (posOrderType === 'delivery' && !t.address.trim()) { alert('Enter the delivery address.'); return; }
 
   const payload = {
@@ -2508,7 +2608,7 @@ async function finalizeQuickOrder() {
       body: JSON.stringify(payload)
     });
     if (data.success && data.order) {
-      openPrintWindow(buildKOTHTML({ tableLabel: posOrderType.toUpperCase(), items: data.order.items || [], address: data.order.address }));
+      openPrintWindow(buildKOTHTML({ tableLabel: posOrderType.toUpperCase(), items: data.order.items || [], address: data.order.address, billNumber: data.order.billNumber }));
       openPrintWindow(buildReceiptHTML(data.order));
       posQuickOrderDraft = { customerName:'', mobile:'', address:'', guestCount:1, items:[], extraCharge:0 };
       loadDraftIntoInputs();
@@ -2659,6 +2759,15 @@ async function handleCustomerAutoComplete(inputEl, otherFieldId, listSuffix) {
     } catch(e) { list.style.display='none'; }
   }, 300);
 }
+
+// Hiding the spinner arrows via CSS doesn't stop the browser's separate scroll-to-change
+// behavior on number inputs — a trackpad scroll while hovering a focused number field still
+// silently increments/decrements it. Blurring on wheel is the actual fix.
+document.addEventListener('wheel', e => {
+  if (document.activeElement && document.activeElement.type === 'number') {
+    document.activeElement.blur();
+  }
+}, { passive: true });
 
 document.addEventListener('click', e => {
   if (!e.target.closest('.autocomplete-wrap')) {
