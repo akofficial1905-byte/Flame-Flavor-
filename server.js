@@ -45,6 +45,28 @@ function getISTDateBounds(dateStr) {
   };
 }
 
+// ── DAILY BILL / KOT NUMBERING ──────────────────────────────────────────────
+// Atomic per-IST-day counter (1, 2, 3... resetting to 1 each new day) so the
+// same short number appears on both the receipt and the kitchen ticket for a
+// given order, and stays consistent even with multiple concurrent orders —
+// counted server-side via findOneAndUpdate($inc) rather than client-side,
+// which would risk duplicate numbers under concurrency.
+function getISTDateKey() {
+  const now = new Date();
+  const ist = new Date(now.getTime() + 5.5 * 60 * 60000);
+  return ist.toISOString().slice(0, 10);
+}
+
+async function getNextBillNumber() {
+  const dateKey = getISTDateKey();
+  const counter = await Counter.findOneAndUpdate(
+    { dateKey },
+    { $inc: { seq: 1 } },
+    { upsert: true, new: true }
+  );
+  return counter.seq;
+}
+
 function normalizeRequestType(v) {
   const s = String(v || "").trim().toLowerCase();
   if (s === "manager" || s === "call manager") return "manager";
@@ -77,9 +99,17 @@ function sanitizeTableDraftPayload(body = {}) {
   };
 }
 
+// ── Counter (daily bill/KOT numbering) ──────────────────────────────────────
+const counterSchema = new mongoose.Schema({
+  dateKey: { type: String, required: true, unique: true, index: true }, // IST YYYY-MM-DD
+  seq:     { type: Number, default: 0 }
+});
+const Counter = mongoose.model("Counter", counterSchema);
+
 // ─── SCHEMAS ──────────────────────────────────────────────────────────────────
 const orderSchema = new mongoose.Schema(
   {
+    billNumber:          { type: Number, default: null }, // daily sequential #, resets each IST day
     orderType:          String,
     customerName:       String,
     registrationNumber: String,
@@ -134,6 +164,8 @@ const tableDraftSchema = new mongoose.Schema({
   extraCharge:      { type: Number, default: 0 },
   extraChargeNote:  { type: String, default: "" },
   isCustom:      { type: Boolean, default: false }, // ad-hoc/unorganized table (not one of the fixed tables)
+  reservedBillNumber: { type: Number, default: null }, // assigned the first time KOT is printed for this table session
+  lastKotItems:  [{ name: String, variant: String, qty: Number }], // snapshot as of the last KOT print, for incremental KOT diffing
   lastPrintedAt: Date,
   updatedAt:     { type: Date, default: Date.now },
   createdAt:     { type: Date, default: Date.now }
@@ -399,8 +431,10 @@ app.post("/api/orders", async (req, res) => {
       autoExtraCharge = Number(settings.takeawayCharge || 0);
     }
     const totals = computeOrderTotals(normalItems, autoExtraCharge, settings);
+    const billNumber = await getNextBillNumber();
 
     const order = new Order({
+      billNumber,
       orderType, customerName, registrationNumber, mobile,
       tableNumber: tableNumber ? String(tableNumber) : "",
       address: address || "", location: location || null,
@@ -697,6 +731,109 @@ app.get("/api/table-orders", async (req, res) => {
 });
 
 // NOTE: This specific route must come BEFORE the :tableNumber param route
+//
+// Called every time the manager prints a KOT for a dine-in table. Two jobs:
+//   1. Reserve this table's daily bill/KOT number the FIRST time a KOT is
+//      printed for its current session — the same number is then reused on
+//      the receipt when the bill is eventually finalized, so both documents
+//      always match. If Save & Print Bill is clicked without ever printing a
+//      KOT first, finalize() reserves the number itself instead.
+//   2. Diff the current item list against what was actually sent to the
+//      kitchen last time (lastKotItems) so a second KOT print for the same
+//      table only shows what's NEW since the last one — not the whole order
+//      again, which would confuse kitchen staff into re-cooking everything.
+app.post("/api/table-orders/kot-print", async (req, res) => {
+  try {
+    const tableNumber = String(req.body?.tableNumber || "").trim();
+    if (!tableNumber)
+      return res.status(400).json({ success: false, error: "tableNumber is required" });
+    const currentItems = Array.isArray(req.body?.items)
+      ? req.body.items.map((i) => ({
+          name: String(i?.name || ""), variant: String(i?.variant || ""), qty: Number(i?.qty || 0)
+        }))
+      : [];
+
+    const draft = await TableDraft.findOne({ tableNumber });
+    if (!draft)
+      return res.status(404).json({ success: false, error: "Table draft not found" });
+
+    if (!draft.reservedBillNumber) {
+      draft.reservedBillNumber = await getNextBillNumber();
+    }
+
+    const prevMap = new Map();
+    (draft.lastKotItems || []).forEach((i) => prevMap.set(`${i.name}|${i.variant || ""}`, i.qty));
+    const deltaItems = [];
+    currentItems.forEach((i) => {
+      const key = `${i.name}|${i.variant || ""}`;
+      const prevQty = prevMap.get(key) || 0;
+      const diff = i.qty - prevQty;
+      if (diff > 0) deltaItems.push({ name: i.name, variant: i.variant, qty: diff });
+    });
+
+    draft.lastKotItems = currentItems;
+    await draft.save();
+
+    res.json({ success: true, billNumber: draft.reservedBillNumber, deltaItems });
+  } catch (err) {
+    console.error("KOT print error:", err);
+    res.status(500).json({ success: false, error: "Could not process KOT print", detail: err.message });
+  }
+});
+
+// Moves an in-progress table draft to a different table number — customer
+// name, mobile, items, extra charge, AND the reserved bill number / KOT
+// tracking all move with it (it's the same order/session, just relocated),
+// so switching tables doesn't reset anything the manager already entered.
+app.post("/api/table-orders/move", async (req, res) => {
+  try {
+    const fromTable = String(req.body?.fromTable || "").trim();
+    const toTable   = String(req.body?.toTable   || "").trim();
+    if (!fromTable || !toTable)
+      return res.status(400).json({ success: false, error: "fromTable and toTable are required" });
+    if (fromTable === toTable) return res.json({ success: true, unchanged: true });
+
+    const source = await TableDraft.findOne({ tableNumber: fromTable });
+    if (!source)
+      return res.status(404).json({ success: false, error: "Source table draft not found" });
+
+    const isCustomDest = !/^[1-9]\d*$/.test(toTable);
+
+    const updated = await TableDraft.findOneAndUpdate(
+      { tableNumber: toTable },
+      {
+        $set: {
+          customerName:       source.customerName,
+          mobile:             source.mobile,
+          guestCount:         source.guestCount,
+          status:             source.status,
+          items:              source.items,
+          total:              source.total,
+          extraCharge:        source.extraCharge,
+          extraChargeNote:    source.extraChargeNote,
+          isCustom:           isCustomDest,
+          reservedBillNumber: source.reservedBillNumber,
+          lastKotItems:       source.lastKotItems,
+          updatedAt:          new Date()
+        },
+        $setOnInsert: { createdAt: new Date() }
+      },
+      { new: true, upsert: true }
+    );
+
+    await TableDraft.findOneAndDelete({ tableNumber: fromTable });
+
+    io.emit("tableDraftCleared", { tableNumber: fromTable });
+    io.emit("tableDraftUpdated", updated);
+
+    res.json({ success: true, draft: updated });
+  } catch (err) {
+    console.error("Move table error:", err);
+    res.status(500).json({ success: false, error: "Could not move table", detail: err.message });
+  }
+});
+
+// NOTE: This specific route must come BEFORE the :tableNumber param route
 app.post("/api/table-orders/save-draft", async (req, res) => {
   try {
     const p = sanitizeTableDraftPayload(req.body);
@@ -757,10 +894,17 @@ app.post("/api/table-orders/finalize", async (req, res) => {
     const settings = await getSettings();
     const totals = computeOrderTotals(p.items, p.extraCharge, settings);
 
+    // Reuse the bill number reserved when KOT was first printed for this table
+    // session, so the receipt and any earlier KOT always show the same number.
+    // If no KOT was ever printed (straight to Save & Print Bill), reserve one now.
+    const existingDraft = await TableDraft.findOne({ tableNumber: p.tableNumber });
+    const billNumber = existingDraft?.reservedBillNumber || await getNextBillNumber();
+
     // Apply any ledger credit/dues the manager chose to settle against this bill
     const ledgerApplied = Number(req.body.ledgerApplied || 0);
 
     const order = new Order({
+      billNumber,
       orderType:       "dinein",
       customerName:    p.customerName || "",
       mobile:          p.mobile       || "",
