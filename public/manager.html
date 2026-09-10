@@ -925,9 +925,20 @@ let orderAlertActive = false;
 let orderAlertTimeouts = [];
 let orderAlertIntervals = [];
 
+let sharedAudioCtx = null;
+function getAudioCtx() {
+  if (!sharedAudioCtx) {
+    try { sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch(e) { return null; }
+  }
+  if (sharedAudioCtx.state === 'suspended') { sharedAudioCtx.resume().catch(()=>{}); }
+  return sharedAudioCtx;
+}
+
 function playChimeTone(big) {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const notes = big ? [880, 1108, 880, 1108] : [784, 988];
     const peak = big ? 0.6 : 0.42;
     notes.forEach((freq, i) => {
@@ -1133,21 +1144,61 @@ async function initManager() {
   document.getElementById('datePicker').value = today();
   document.getElementById('dashboardDate').value = today();
   prefillAnalyticsDates();
-  await loadInventory();
-  await loadMenuForTables();
-  await loadSettings();
-  await loadAllTableDrafts();
-  renderTablesList();
-  selectTable(1);
-  renderCategoriesList();
-  await fetchOrders();
-  await renderDashboard();
-  await loadPendingDineIn();
-  ensureAnalyticsLoaded('summary'); // Summary is the default-visible analytics sub-tab
-  wireNavSidebar();
-  wireSettingsPanel();
-  const silenceBtn = document.getElementById('silenceAlarmBtn');
-  if (silenceBtn) silenceBtn.onclick = () => clearAlertTimers();
+  showInitLoading(true);
+
+  try {
+    // Runs the independent network calls concurrently instead of one at a time — this was
+    // the actual cause of the multi-second "stuck, nothing responds" window right after
+    // login: every step was waiting for the previous request to fully finish before even
+    // starting the next, so total load time was the SUM of every request instead of
+    // however long the single slowest one takes.
+    await Promise.all([
+      loadInventory().then(() => loadMenuForTables()), // only this pair has a real dependency
+      loadSettings(),
+      loadAllTableDrafts()
+    ]);
+
+    renderTablesList();
+    selectTable(1);
+    renderCategoriesList();
+    // Auto-select the first category so menu items are visible immediately, instead of
+    // leaving the middle panel on "Select a category" until the manager clicks one —
+    // which read like the app was still stuck even once loading had actually finished.
+    const firstCat = tableMenuFlat[0]?.category;
+    if (firstCat) selectCategory(firstCat);
+
+    await Promise.all([
+      fetchOrders(),
+      renderDashboard(),
+      loadPendingDineIn()
+    ]);
+
+    ensureAnalyticsLoaded('summary'); // Summary is the default-visible analytics sub-tab
+    wireNavSidebar();
+    wireSettingsPanel();
+    const silenceBtn = document.getElementById('silenceAlarmBtn');
+    if (silenceBtn) silenceBtn.onclick = () => clearAlertTimers();
+  } finally {
+    showInitLoading(false);
+  }
+}
+
+function showInitLoading(on) {
+  let el = document.getElementById('initLoadingOverlay');
+  if (on) {
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'initLoadingOverlay';
+      el.style.cssText = 'position:fixed;inset:0;background:rgba(245,244,240,.92);z-index:5000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.75rem;';
+      el.innerHTML = `
+        <div style="width:38px;height:38px;border:4px solid var(--border);border-top-color:var(--navy);border-radius:50%;animation:initSpin .8s linear infinite;"></div>
+        <div style="font-size:.85rem;font-weight:700;color:var(--navy);">Loading Flame And Flavor…</div>
+        <style>@keyframes initSpin{to{transform:rotate(360deg);}}</style>`;
+      document.body.appendChild(el);
+    }
+  } else if (el) {
+    el.remove();
+  }
 }
 
 // ─────────────────────────────── TABS ────────────────────────────────
