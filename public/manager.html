@@ -1063,6 +1063,10 @@ document.getElementById('loginForm').onsubmit = async e => {
       body: JSON.stringify({username, password})
     });
     if (data.success) {
+      // Remembers this specific device/browser so refreshing doesn't re-prompt — this is
+      // NOT a shareable link or bypass: it's tied to this browser's local storage only, so
+      // a different device visiting the same URL still hits the normal login screen.
+      localStorage.setItem('ff_manager_stay_logged_in', '1');
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('managerApp').style.display = 'flex';
       initManager();
@@ -1071,12 +1075,20 @@ document.getElementById('loginForm').onsubmit = async e => {
   finally { btn.disabled=false; btn.textContent='Login'; }
 };
 
+// Skip the login screen automatically if this device already logged in successfully before.
+if (localStorage.getItem('ff_manager_stay_logged_in') === '1') {
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('managerApp').style.display = 'flex';
+  initManager();
+}
+
 function showLoginErr(msg) {
   const el = document.getElementById('loginError');
   el.textContent = msg; el.style.display='block';
 }
 
 document.getElementById('logoutBtn').onclick = () => {
+  localStorage.removeItem('ff_manager_stay_logged_in');
   document.getElementById('loginOverlay').style.display='flex';
   document.getElementById('managerApp').style.display='none';
 };
