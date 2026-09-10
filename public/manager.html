@@ -134,18 +134,18 @@
     .menu-card-price{color:var(--amber);font-weight:700;font-size:.95rem;}
     .draft-item{display:flex;justify-content:space-between;align-items:center;padding:.6rem .7rem;background:var(--surface2);border-radius:8px;margin-bottom:.5rem;font-size:.82rem;}
     .tables-row{display:flex;flex-wrap:wrap;gap:.5rem;padding:.75rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0;align-items:center;}
-    .table-btn{padding:.5rem .9rem;background:#fff;border:2px solid var(--border);border-radius:7px;cursor:pointer;text-align:center;transition:all .15s;min-width:80px;}
+    .table-btn{padding:.85rem 1.2rem;background:#fff;border:2px solid var(--border);border-radius:9px;cursor:pointer;text-align:center;transition:all .15s;min-width:104px;min-height:78px;display:flex;flex-direction:column;justify-content:center;gap:.15rem;}
     .table-btn:hover{border-color:var(--amber);}
     .table-btn.occupied{background:#FEF3C7;border-color:var(--warn);}
     .table-btn.occupied .tn{color:#92400E;}
-    .table-btn .ts.amt{font-weight:800;color:#92400E;background:rgba(217,119,6,.15);padding:1px 7px;border-radius:5px;display:inline-block;margin-top:2px;}
+    .table-btn .ts.amt{font-weight:800;font-size:.95rem;color:#92400E;background:rgba(217,119,6,.15);padding:2px 9px;border-radius:6px;display:inline-block;margin-top:3px;}
     .table-btn.active .ts.amt{color:#fff;background:rgba(255,255,255,.2);}
     .table-btn.active{background:var(--navy);color:#fff;border-color:var(--navy);}
     .table-btn.custom-table{border-style:dashed;}
     .order-type-btn{background:#fff;color:var(--navy);border:1.5px solid var(--border);font-weight:700;}
     .order-type-btn.active{background:var(--navy);color:#fff;border-color:var(--navy);}
-    .table-btn .tn{font-size:1rem;font-weight:700;}
-    .table-btn .ts{font-size:.65rem;opacity:.8;}
+    .table-btn .tn{font-size:1.25rem;font-weight:800;}
+    .table-btn .ts{font-size:.75rem;opacity:.85;}
     .pos-section-label{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--navy);margin:0 0 .6rem;padding-bottom:.4rem;border-bottom:2px solid var(--border);}
     .pos-billing .pos-section-label{font-size:.82rem;}
 
@@ -611,14 +611,20 @@
 
       <!-- ═══════════ INVENTORY ═══════════ -->
       <div id="inventoryTab" class="tab-content">
-        <div style="padding:.75rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;justify-content:space-between;align-items:center;">
-          <h2 style="font-size:1rem;font-weight:700;">Inventory & Menu Availability</h2>
-          <button class="btn btn-success btn-sm" onclick="saveInventory()">Save Changes</button>
+        <div style="padding:.75rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;">
+          <div>
+            <h2 style="font-size:1rem;font-weight:700;">Inventory & Menu Management</h2>
+            <p style="font-size:.72rem;color:var(--muted);margin-top:.15rem;">Edit names, prices, and variants directly below. Nothing goes live until you click Save Changes.</p>
+          </div>
+          <div style="display:flex;gap:.5rem;">
+            <button class="btn btn-primary btn-sm" onclick="openAddDishModal()">➕ Add New Dish</button>
+            <button class="btn btn-success btn-sm" onclick="saveInventory()">💾 Save Changes</button>
+          </div>
         </div>
         <div style="flex:1;overflow-y:auto;padding:1rem 1.25rem;">
           <div class="tbl-wrap">
             <table class="inv-table">
-              <thead><tr><th>Category</th><th>Item Name</th><th>Price / Variants</th><th style="text-align:center;">Available</th></tr></thead>
+              <thead><tr><th>Item Name</th><th>Price / Variants</th><th style="text-align:center;">Available</th><th></th></tr></thead>
               <tbody id="inventoryTableBody"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:2rem;">Loading…</td></tr></tbody>
             </table>
           </div>
@@ -770,6 +776,35 @@
     <div style="display:flex;gap:.75rem;margin-top:.5rem;">
       <button class="btn btn-success" style="flex:1;" onclick="submitLedgerAdjust()">Save</button>
       <button class="btn btn-secondary" style="flex:1;" onclick="closeModal('ledgerModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add New Dish Modal -->
+<div id="addDishModal" class="modal">
+  <div class="modal-box" style="max-width:420px;">
+    <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:1rem;">➕ Add New Dish</h2>
+    <div class="form-group">
+      <label class="form-label">Category</label>
+      <input id="newDishCategory" type="text" class="form-input" list="existingCategoriesList" placeholder="e.g. Burgers (existing or new)"/>
+      <datalist id="existingCategoriesList"></datalist>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Item Name</label>
+      <input id="newDishName" type="text" class="form-input" placeholder="e.g. Veg Burger"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Price (₹)</label>
+      <input id="newDishPrice" type="number" class="form-input" min="0" value="0"/>
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">Image filename (optional)</label>
+      <input id="newDishImage" type="text" class="form-input" placeholder="e.g. veg-burger.jpg"/>
+      <p style="font-size:.7rem;color:var(--muted);margin-top:.4rem;">This just tells the menu what image file to look for — you'll still need to upload the actual photo with this exact filename to the site's public folder separately.</p>
+    </div>
+    <div style="display:flex;gap:.75rem;margin-top:1rem;">
+      <button class="btn btn-success" style="flex:1;" onclick="confirmAddDish()">Add to Menu</button>
+      <button class="btn btn-secondary" style="flex:1;" onclick="closeModal('addDishModal')">Cancel</button>
     </div>
   </div>
 </div>
@@ -1341,7 +1376,7 @@ async function quickPrintReceipt(orderId) {
     // Fired synchronously (not delayed) so both stay within the same click's user-gesture
     // window — a setTimeout delay here risks the second popup getting blocked.
     if (o.orderType === 'takeaway' || o.orderType === 'delivery') {
-      openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [], address: o.address, billNumber: o.billNumber }));
+      openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [], address: o.address, billNumber: o.billNumber, orderType: o.orderType }));
     }
     openPrintWindow(buildReceiptHTML(o));
   } catch(e) { alert('Could not print: '+e.message); }
@@ -1353,7 +1388,7 @@ async function quickPrintKOT(orderId) {
     const o = await apiFetch(`/api/orders/${orderId}`);
     currentPrintOrder = o;
     currentPrintOrderId = orderId;
-    openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [], address: o.address, billNumber: o.billNumber }));
+    openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [], address: o.address, billNumber: o.billNumber, orderType: o.orderType }));
   } catch(e) { alert('Could not print: '+e.message); }
 }
 window.quickPrintKOT = quickPrintKOT;
@@ -1406,6 +1441,7 @@ const PRINT_DOC_STYLES = `
   .p-brand-center{text-align:center;margin-bottom:1px;}
   .p-brand-center h1{font-size:14px;margin:0;letter-spacing:.5px;font-weight:800;line-height:1.15;}
   .p-gstin-center{text-align:center;font-size:8.5px;color:#333;margin-top:1px;}
+  .p-bill-row{display:flex;justify-content:space-between;gap:8px;font-size:15px;font-weight:800;margin:3px 0;color:#000;}
   .p-divider{border:none;border-top:1.3px dashed #000;margin:3px 0;}
   .p-info-row{display:flex;justify-content:space-between;gap:8px;font-size:10px;margin-bottom:1.5px;}
   .p-info-row .p-strong{font-weight:800;}
@@ -1424,7 +1460,7 @@ const PRINT_DOC_STYLES = `
   .p-footer{text-align:center;margin-top:6px;font-size:9.5px;font-weight:700;}
   .p-kot-item{font-size:11px;font-weight:700;padding:2.5px 0;border-bottom:1px dashed #999;display:flex;justify-content:space-between;}
   .p-kot-item .p-kot-variant{font-size:8.5px;font-weight:500;display:block;}
-  .p-kot-header{font-size:13px;font-weight:800;letter-spacing:.2px;}
+  .p-kot-header{font-size:15px;font-weight:800;letter-spacing:.2px;}
   .p-kot-address{font-size:9px;color:#333;margin-top:1px;}
 `;
 
@@ -1475,10 +1511,10 @@ function buildReceiptHTML(o) {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Receipt</title><style>${PRINT_DOC_STYLES}</style></head><body>
     <div class="p-brand-center"><h1>FLAME AND FLAVOR</h1></div>
     ${o.gstin ? `<div class="p-gstin-center">GSTIN: ${esc(o.gstin)}</div>` : ''}
-    ${o.billNumber ? `<div class="p-gstin-center" style="font-weight:800;color:#000;">Bill No: ${o.billNumber}</div>` : ''}
     <hr class="p-divider">
-    <div class="p-info-row"><span class="p-strong">${esc(o.customerName || 'N/A')}</span><span class="p-strong p-right">${esc(orderTypeLabel(o))}</span></div>
-    <div class="p-info-row"><span>${esc(o.mobile || '')}</span><span class="p-right">${esc(fmtShortDateTime(o.createdAt))}</span></div>
+    <div class="p-bill-row"><span>Bill No: ${o.billNumber || '-'}</span><span>${esc(orderTypeLabel(o))}</span></div>
+    <div class="p-info-row"><span class="p-strong">${esc(o.customerName || 'N/A')}</span><span class="p-right">${esc(fmtShortDateTime(o.createdAt))}</span></div>
+    <div class="p-info-row"><span>${esc(o.mobile || '')}</span></div>
     ${locationRow}
     <hr class="p-divider">
     <table class="p-items">
@@ -1555,13 +1591,15 @@ function kotLabelFor(o) {
   return (o.orderType || '').toUpperCase();
 }
 
-function buildKOTHTML({ tableLabel, items, address, billNumber }) {
+function buildKOTHTML({ tableLabel, items, address, billNumber, orderType }) {
   const itemRows = (items||[]).map(i => `
     <div class="p-kot-item"><span>${esc(i.name)}${i.variant ? `<span class="p-kot-variant">${esc(i.variant)}</span>` : ''}</span><span>x${i.qty}</span></div>`).join('');
+  const billRow = (billNumber || orderType)
+    ? `<div class="p-bill-row"><span>${billNumber ? 'Bill No: '+billNumber : ''}</span><span>${esc((orderType||'').toUpperCase())}</span></div>` : '';
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>KOT</title><style>${PRINT_DOC_STYLES}</style></head><body>
     ${tableLabel ? `<div class="p-kot-header">${esc(tableLabel)}</div>` : ''}
-    ${billNumber ? `<div class="p-kot-address" style="font-weight:800;color:#000;">Bill No: ${billNumber}</div>` : ''}
+    ${billRow}
     ${address ? `<div class="p-kot-address">${esc(address)}</div>` : ''}
     <hr class="p-divider">
     <div>${itemRows}</div>
@@ -1572,7 +1610,7 @@ function doPrintReceipt() {
   if (!currentPrintOrder) { alert('Open a print preview first.'); return; }
   const o = currentPrintOrder;
   if (o.orderType === 'takeaway' || o.orderType === 'delivery') {
-    openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [], address: o.address, billNumber: o.billNumber }));
+    openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [], address: o.address, billNumber: o.billNumber, orderType: o.orderType }));
   }
   openPrintWindow(buildReceiptHTML(o));
 }
@@ -1580,7 +1618,7 @@ function doPrintReceipt() {
 async function doPrintKOT() {
   if (!currentPrintOrder) return;
   const o = currentPrintOrder;
-  openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [], address: o.address, billNumber: o.billNumber }));
+  openPrintWindow(buildKOTHTML({ tableLabel: kotLabelFor(o), items: o.items || [], address: o.address, billNumber: o.billNumber, orderType: o.orderType }));
 }
 
 // ─────────────────────────────── SEND BILL VIA WHATSAPP ──────────────
@@ -1833,25 +1871,49 @@ async function generateItemsAnalytics() {
   const from = document.getElementById('itemsFrom').value||today();
   const to   = document.getElementById('itemsTo').value||today();
   const orders = await getOrdersRange(from, to);
-  const map = {};
+
+  // Group by category first, then items within each category — matches how a
+  // manager actually thinks about the menu (Burgers, Biryani, etc), not one
+  // giant flat list across everything.
+  const catMap = {};
+  const flatMap = {}; // still needed for the overall top-10 chart, unaffected by grouping
   orders.forEach(o=>(o.items||[]).forEach(i=>{
+    const cat = i.category || 'Other';
     const k = i.name+(i.variant?` (${i.variant})`:'');
-    if (!map[k]) map[k]={qty:0,rev:0,price:i.price};
-    map[k].qty+=(i.qty||0); map[k].rev+=(i.price*i.qty);
+    if (!catMap[cat]) catMap[cat] = { items:{}, catRev:0 };
+    if (!catMap[cat].items[k]) catMap[cat].items[k] = { qty:0, rev:0 };
+    catMap[cat].items[k].qty += (i.qty||0);
+    catMap[cat].items[k].rev += (i.price*i.qty);
+    catMap[cat].catRev += (i.price*i.qty);
+    if (!flatMap[k]) flatMap[k] = { qty:0, rev:0 };
+    flatMap[k].qty += (i.qty||0);
+    flatMap[k].rev += (i.price*i.qty);
   }));
-  const sorted = Object.entries(map).sort((a,b)=>b[1].rev-a[1].rev);
-  const totalRev = sorted.reduce((s,x)=>s+x[1].rev,0);
-  _lastItems = { rows: sorted.map(([name,d])=>[name,d.qty,d.rev]), from, to };
-  document.getElementById('itemsBody').innerHTML = sorted.map(([name,d],i)=>`
-    <tr>
-      <td>${i+1}</td>
-      <td style="font-weight:600;">${esc(name)}</td>
-      <td>${d.qty}</td>
-      <td style="color:var(--amber);font-weight:700;">${fmtRs(d.rev)}</td>
-      <td>${totalRev?Math.round(d.rev/totalRev*100):0}%</td>
-    </tr>`).join('');
+
+  const totalRev = Object.values(catMap).reduce((s,c)=>s+c.catRev,0);
+  const sortedCats = Object.entries(catMap).sort((a,b)=>b[1].catRev-a[1].catRev);
+
+  const exportRows = [];
+  let bodyHtml = '';
+  sortedCats.forEach(([cat, data]) => {
+    bodyHtml += `<tr style="background:var(--surface2);"><td colspan="5" style="font-weight:800;color:var(--navy);text-transform:uppercase;font-size:.76rem;letter-spacing:.03em;padding-top:.8rem;">${esc(cat)} <span style="color:var(--amber);font-weight:700;text-transform:none;letter-spacing:0;">— ${fmtRs(data.catRev)}</span></td></tr>`;
+    const sortedItems = Object.entries(data.items).sort((a,b)=>b[1].rev-a[1].rev);
+    sortedItems.forEach(([name,d],idx) => {
+      bodyHtml += `<tr>
+        <td>${idx+1}</td>
+        <td style="font-weight:600;padding-left:1.4rem;">${esc(name)}</td>
+        <td>${d.qty}</td>
+        <td style="color:var(--amber);font-weight:700;">${fmtRs(d.rev)}</td>
+        <td>${totalRev?Math.round(d.rev/totalRev*100):0}%</td>
+      </tr>`;
+      exportRows.push([cat, name, d.qty, d.rev]);
+    });
+  });
+  document.getElementById('itemsBody').innerHTML = bodyHtml || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1.5rem;">No data</td></tr>';
+  _lastItems = { rows: exportRows, from, to };
+
   if (analyticsCharts.items) analyticsCharts.items.destroy();
-  const top10 = sorted.slice(0,10);
+  const top10 = Object.entries(flatMap).sort((a,b)=>b[1].rev-a[1].rev).slice(0,10);
   analyticsCharts.items = new Chart(document.getElementById('itemsChart'),{
     type:'bar',
     data:{labels:top10.map(x=>x[0].length>15?x[0].slice(0,15)+'…':x[0]),datasets:[{label:'Revenue',data:top10.map(x=>x[1].rev),backgroundColor:'#D97706'}]},
@@ -1861,7 +1923,7 @@ async function generateItemsAnalytics() {
 
 function exportItemsExcel() {
   if (!_lastItems.rows.length) { alert('Generate the report first.'); return; }
-  const ws = XLSX.utils.aoa_to_sheet([['Item','Qty Sold','Revenue'], ..._lastItems.rows]);
+  const ws = XLSX.utils.aoa_to_sheet([['Category','Item','Qty Sold','Revenue'], ..._lastItems.rows]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Items');
   XLSX.writeFile(wb, `items_${_lastItems.from}_to_${_lastItems.to}.xlsx`);
@@ -1935,17 +1997,19 @@ async function generateHourlyAnalytics() {
   setTableLoading('hourlyBody', 4);
   const date = document.getElementById('hourlyDate').value||today();
   const orders = await fetchOrders2Date(date);
-  const hourly = Array(24).fill(null).map(()=>({orders:0,rev:0}));
-  orders.forEach(o=>{ const h=new Date(o.createdAt).getHours(); hourly[h].orders++; hourly[h].rev+=(o.total||0); });
-  const labels = hourly.map((_,h)=>h===0?'12AM':h<12?h+'AM':h===12?'12PM':(h-12)+'PM');
+  // 6 four-hour blocks instead of 24 individual hours — easier to read at a glance
+  // and matches how a restaurant actually thinks about its day (morning/lunch/etc).
+  const blockLabels = ['12AM–4AM','4AM–8AM','8AM–12PM','12PM–4PM','4PM–8PM','8PM–12AM'];
+  const blocks = blockLabels.map(()=>({orders:0,rev:0}));
+  orders.forEach(o=>{ const h=new Date(o.createdAt).getHours(); const b=Math.floor(h/4); blocks[b].orders++; blocks[b].rev+=(o.total||0); });
   if (analyticsCharts.hourly) analyticsCharts.hourly.destroy();
   analyticsCharts.hourly = new Chart(document.getElementById('hourlyTrendsChart'),{
     type:'bar',
-    data:{labels,datasets:[{label:'Orders',data:hourly.map(x=>x.orders),backgroundColor:'#D97706',yAxisID:'y'},{type:'line',label:'Revenue (₹)',data:hourly.map(x=>x.rev),borderColor:'#3B82F6',backgroundColor:'rgba(59,130,246,.1)',yAxisID:'y1',tension:.3}]},
+    data:{labels:blockLabels,datasets:[{label:'Orders',data:blocks.map(x=>x.orders),backgroundColor:'#D97706',yAxisID:'y'},{type:'line',label:'Revenue (₹)',data:blocks.map(x=>x.rev),borderColor:'#3B82F6',backgroundColor:'rgba(59,130,246,.1)',yAxisID:'y1',tension:.3}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:10}}}},scales:{y:{position:'left'},y1:{position:'right',grid:{drawOnChartArea:false}}}}
   });
-  const activeHours = hourly.filter(x=>x.orders>0);
-  document.getElementById('hourlyBody').innerHTML = activeHours.length ? hourly.map((d,h)=>d.orders?`<tr><td>${labels[h]}</td><td>${d.orders}</td><td style="color:var(--amber);font-weight:700;">${fmtRs(d.rev)}</td><td>${fmtRs(d.orders?Math.round(d.rev/d.orders):0)}</td></tr>`:'').join('') : '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.5rem;">No orders on this date</td></tr>';
+  const activeBlocks = blocks.filter(x=>x.orders>0);
+  document.getElementById('hourlyBody').innerHTML = activeBlocks.length ? blocks.map((d,i)=>d.orders?`<tr><td style="font-weight:600;">${blockLabels[i]}</td><td>${d.orders}</td><td style="color:var(--amber);font-weight:700;">${fmtRs(d.rev)}</td><td>${fmtRs(d.orders?Math.round(d.rev/d.orders):0)}</td></tr>`:'').join('') : '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:1.5rem;">No orders on this date</td></tr>';
 }
 
 async function generateComparison() {
@@ -1998,39 +2062,158 @@ async function loadInventory() {
   } catch(e) { console.error('loadInventory',e); }
 }
 
+// Renders category header rows (with a scoped "+ Add Item" button) followed by fully
+// editable item rows. Every input writes directly into the live `menuData` object as
+// the manager types — Save Changes just POSTs whatever's currently in `menuData`, so
+// there's no separate "collect form values" step to keep in sync.
 function renderInventoryTable() {
   if (!menuData) return;
   let html = '';
   Object.entries(menuData).forEach(([cat, items]) => {
+    html += `<tr class="inv-cat-row" style="background:var(--surface2);">
+      <td colspan="4" style="font-weight:800;color:var(--navy);text-transform:uppercase;font-size:.78rem;letter-spacing:.03em;padding:.7rem .9rem;">
+        ${esc(cat)}
+        <button class="btn btn-xs btn-secondary inv-add-item-btn" data-cat="${esc(cat)}" style="margin-left:.6rem;text-transform:none;letter-spacing:0;">+ Add Item</button>
+      </td></tr>`;
     items.forEach((item, idx) => {
-      const variantsText = item.variants && Object.keys(item.variants).length
-        ? Object.entries(item.variants).map(([v,p])=>`${v}: ₹${p}`).join(', ')
-        : `₹${item.price||0}`;
+      const variantEntries = Object.entries(item.variants || {});
+      const hasVariants = variantEntries.length > 0;
+      let priceCell;
+      if (hasVariants) {
+        priceCell = `<div style="display:flex;flex-direction:column;gap:.3rem;">` +
+          variantEntries.map(([vName, vPrice]) => `
+            <div style="display:flex;gap:.35rem;align-items:center;">
+              <input type="text" class="form-input inv-variant-name" data-cat="${esc(cat)}" data-idx="${idx}" data-variant="${esc(vName)}" style="width:100px;font-size:.75rem;padding:.3rem .5rem;" value="${esc(vName)}" placeholder="Variant"/>
+              <input type="number" class="form-input inv-variant-price" data-cat="${esc(cat)}" data-idx="${idx}" data-variant="${esc(vName)}" style="width:80px;font-size:.75rem;padding:.3rem .5rem;" value="${vPrice}"/>
+              <button class="btn btn-xs btn-danger inv-remove-variant" data-cat="${esc(cat)}" data-idx="${idx}" data-variant="${esc(vName)}" title="Remove this option">×</button>
+            </div>`).join('') +
+          `<button class="btn btn-xs btn-secondary inv-add-variant" data-cat="${esc(cat)}" data-idx="${idx}" style="width:fit-content;">+ Variant</button></div>`;
+      } else {
+        priceCell = `<div style="display:flex;align-items:center;gap:.4rem;">
+          <input type="number" class="form-input inv-item-price" data-cat="${esc(cat)}" data-idx="${idx}" style="width:95px;" value="${item.price||0}"/>
+          <button class="btn btn-xs btn-secondary inv-add-variant" data-cat="${esc(cat)}" data-idx="${idx}">+ Variant</button>
+        </div>`;
+      }
       html += `<tr>
-        ${idx===0?`<td rowspan="${items.length}" style="font-weight:700;vertical-align:top;padding-top:.9rem;">${esc(cat)}</td>`:''}
-        <td>${esc(item.name)}</td>
-        <td style="font-size:.8rem;color:var(--muted);">${esc(variantsText)}</td>
-        <td style="text-align:center;"><input type="checkbox" ${item.available!==false?'checked':''} data-cat="${esc(cat)}" data-name="${esc(item.name)}" style="width:18px;height:18px;cursor:pointer;"/></td>
+        <td><input type="text" class="form-input inv-item-name" data-cat="${esc(cat)}" data-idx="${idx}" style="min-width:160px;" value="${esc(item.name)}"/></td>
+        <td>${priceCell}</td>
+        <td style="text-align:center;"><input type="checkbox" class="inv-item-available" data-cat="${esc(cat)}" data-idx="${idx}" ${item.available!==false?'checked':''} style="width:18px;height:18px;cursor:pointer;"/></td>
+        <td><button class="btn btn-xs btn-danger inv-delete-item" data-cat="${esc(cat)}" data-idx="${idx}">🗑</button></td>
       </tr>`;
     });
   });
   document.getElementById('inventoryTableBody').innerHTML = html || '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:2rem;">No menu data</td></tr>';
 }
 
-async function saveInventory() {
-  if (!menuData) return;
-  const checkboxes = document.querySelectorAll('#inventoryTableBody input[type=checkbox]');
-  checkboxes.forEach(cb => {
-    const cat = cb.dataset.cat, name = cb.dataset.name;
-    if (menuData[cat]) {
-      const item = menuData[cat].find(i=>i.name===name);
-      if (item) item.available = cb.checked;
+// Delegated listeners — set up once, work for every current and future row since they're
+// matched by class, not bound per-element (avoids re-wiring after every re-render).
+(function wireInventoryEditing() {
+  const body = document.getElementById('inventoryTableBody');
+  if (!body) return;
+
+  body.addEventListener('input', e => {
+    const cat = e.target.dataset.cat, idx = e.target.dataset.idx;
+    if (cat == null || idx == null || !menuData[cat]) return;
+    const item = menuData[cat][+idx];
+    if (!item) return;
+    if (e.target.classList.contains('inv-item-name')) {
+      item.name = e.target.value;
+    } else if (e.target.classList.contains('inv-item-price')) {
+      item.price = +e.target.value || 0;
+    } else if (e.target.classList.contains('inv-variant-price')) {
+      const vName = e.target.dataset.variant;
+      if (item.variants && vName in item.variants) item.variants[vName] = +e.target.value || 0;
     }
   });
+
+  // Variant renames are handled on 'change' (not every keystroke) since the variant's
+  // name IS its object key — rebuilding it mid-type would fight with the user's typing.
+  body.addEventListener('change', e => {
+    const cat = e.target.dataset.cat, idx = e.target.dataset.idx;
+    if (cat == null || idx == null || !menuData[cat]) return;
+    const item = menuData[cat][+idx];
+    if (!item) return;
+    if (e.target.classList.contains('inv-item-available')) {
+      item.available = e.target.checked;
+    } else if (e.target.classList.contains('inv-variant-name')) {
+      const oldName = e.target.dataset.variant;
+      const newName = e.target.value.trim();
+      if (!newName || newName === oldName || !item.variants || !(oldName in item.variants)) { e.target.value = oldName; return; }
+      const price = item.variants[oldName];
+      delete item.variants[oldName];
+      item.variants[newName] = price;
+      renderInventoryTable(); // rebuild so the row's data-variant refs stay correct
+    }
+  });
+
+  body.addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const cat = btn.dataset.cat, idx = btn.dataset.idx;
+    if (btn.classList.contains('inv-add-item-btn')) {
+      openAddDishModal(cat);
+    } else if (btn.classList.contains('inv-delete-item')) {
+      if (!confirm('Delete this item from the menu? This only takes effect after Save Changes.')) return;
+      menuData[cat].splice(+idx, 1);
+      renderInventoryTable();
+    } else if (btn.classList.contains('inv-add-variant')) {
+      const item = menuData[cat][+idx];
+      if (!item.variants) item.variants = {};
+      if (!Object.keys(item.variants).length && item.price) item.variants['Regular'] = item.price;
+      let n = 1, newName = 'New Option';
+      while (newName in item.variants) { n++; newName = 'New Option ' + n; }
+      item.variants[newName] = 0;
+      renderInventoryTable();
+    } else if (btn.classList.contains('inv-remove-variant')) {
+      const item = menuData[cat][+idx];
+      const vName = btn.dataset.variant;
+      const removedPrice = item.variants ? item.variants[vName] : 0;
+      if (item.variants) delete item.variants[vName];
+      if (!Object.keys(item.variants||{}).length) { item.price = removedPrice || 0; item.variants = {}; }
+      renderInventoryTable();
+    }
+  });
+})();
+
+function openAddDishModal(prefillCat) {
+  document.getElementById('newDishCategory').value = prefillCat || '';
+  document.getElementById('newDishName').value = '';
+  document.getElementById('newDishPrice').value = 0;
+  document.getElementById('newDishImage').value = '';
+  const dl = document.getElementById('existingCategoriesList');
+  dl.innerHTML = Object.keys(menuData||{}).map(c => `<option value="${esc(c)}"></option>`).join('');
+  openModal('addDishModal');
+}
+window.openAddDishModal = openAddDishModal;
+
+function confirmAddDish() {
+  const cat = document.getElementById('newDishCategory').value.trim();
+  const name = document.getElementById('newDishName').value.trim();
+  const price = +document.getElementById('newDishPrice').value || 0;
+  const image = document.getElementById('newDishImage').value.trim();
+  if (!cat) { alert('Enter a category.'); return; }
+  if (!name) { alert('Enter an item name.'); return; }
+  if (!menuData[cat]) menuData[cat] = [];
+  if (menuData[cat].some(i => i.name.toLowerCase() === name.toLowerCase())) {
+    alert('An item with this name already exists in this category.');
+    return;
+  }
+  const newItem = { name, price, available: true };
+  if (image) newItem.image = '/' + image.replace(/^\/+/, '');
+  menuData[cat].push(newItem);
+  closeModal('addDishModal');
+  renderInventoryTable();
+  alert('Added to the list below — click "Save Changes" to publish it live on the customer menu and POS.');
+}
+window.confirmAddDish = confirmAddDish;
+
+async function saveInventory() {
+  if (!menuData) return;
   try {
     await apiFetch('/update-menu', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(menuData) });
-    alert('Inventory saved!');
+    alert('Inventory saved — live on the customer menu and POS now.');
     await loadMenuForTables();
+    renderCategoriesList();
   } catch(e) { alert('Save failed: '+e.message); }
 }
 
@@ -2526,11 +2709,11 @@ async function printTableKOT() {
         alert('No new items since the last KOT for this table.');
         return;
       }
-      openPrintWindow(buildKOTHTML({ tableLabel: label, items: data.deltaItems, billNumber: data.billNumber }));
+      openPrintWindow(buildKOTHTML({ tableLabel: label, items: data.deltaItems, billNumber: data.billNumber, orderType: 'dinein' }));
     } catch(e) { alert('Could not print KOT: '+e.message); }
   } else {
     const label = posOrderType.toUpperCase();
-    openPrintWindow(buildKOTHTML({ tableLabel: label, items: t.items, address: posOrderType === 'delivery' ? t.address : '' }));
+    openPrintWindow(buildKOTHTML({ tableLabel: label, items: t.items, address: posOrderType === 'delivery' ? t.address : '', orderType: posOrderType }));
   }
 }
 
@@ -2554,6 +2737,7 @@ async function finalizeTableOrder() {
 
   try {
     const wasCustom = typeof selectedTable === 'string' && !/^\d+$/.test(String(selectedTable));
+    suppressNextOwnOrderAlert = true; // this device just created it — no need to alarm itself on its own click
     const data = await apiFetch('/api/table-orders/finalize', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ tableNumber: String(selectedTable), customerName: t.customerName, mobile: t.mobile, guestCount: t.guestCount, items: t.items, extraCharge: t.extraCharge||0, extraChargeNote: t.extraCharge ? 'Extra Charge' : '', ledgerApplied })
@@ -2573,8 +2757,13 @@ async function finalizeTableOrder() {
       }
       selectTable(selectedTable);
       fetchOrders();
+    } else {
+      suppressNextOwnOrderAlert = false;
     }
-  } catch(e) { alert('Error: '+e.message); }
+  } catch(e) {
+    suppressNextOwnOrderAlert = false;
+    alert('Error: '+e.message);
+  }
 }
 
 // Takeaway/Delivery quick order created directly from the manager POS (phone-in
