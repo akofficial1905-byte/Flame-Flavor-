@@ -121,7 +121,7 @@ const orderSchema = new mongoose.Schema(
     paymentVerified:    { type: Boolean, default: false },
     specialRequest:     String,
     requestTags:        [String],
-    items: [{ name: String, variant: String, price: Number, qty: Number }],
+    items: [{ name: String, variant: String, price: Number, qty: Number, category: String }],
     subtotal:   { type: Number, default: 0 },   // items total before charges/GST
     extraCharge:{ type: Number, default: 0 },   // delivery / misc charge added by manager or settings
     extraChargeNote: { type: String, default: "" },
@@ -387,7 +387,8 @@ app.post("/api/orders", async (req, res) => {
           name:    String(i?.name    || ""),
           variant: String(i?.variant || ""),
           price:   Number(i?.price   || 0),
-          qty:     Number(i?.qty     || 0)
+          qty:     Number(i?.qty     || 0),
+          category:String(i?.category|| "")
         }))
       : [];
     const total = calcTotal(normalItems);
@@ -911,7 +912,7 @@ app.post("/api/table-orders/finalize", async (req, res) => {
       tableNumber:     p.tableNumber,
       items: p.items.map((i) => ({
         name: i.name, variant: i.variant || "",
-        price: Number(i.price || 0), qty: Number(i.qty || 0)
+        price: Number(i.price || 0), qty: Number(i.qty || 0), category: i.category || ""
       })),
       subtotal:        totals.subtotal,
       extraCharge:      totals.extraCharge,
