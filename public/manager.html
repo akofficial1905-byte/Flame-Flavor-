@@ -1615,7 +1615,7 @@ function processPrintQueue() {
   const html = printQueue.shift();
 
   const iframe = document.createElement('iframe');
-  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+  iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:80mm;height:200mm;border:0;opacity:0;pointer-events:none;';
   document.body.appendChild(iframe);
   const doc = iframe.contentWindow.document;
   doc.open();
@@ -1641,7 +1641,7 @@ function processPrintQueue() {
       console.error('Print failed', e);
       finishJob();
     }
-    setTimeout(finishJob, 4000); // fallback if onafterprint never fires
+    setTimeout(finishJob, 120000); // last-resort fallback only; the normal path is onafterprint (fires when the dialog closes, even if the user takes a while)
   }, 200);
 }
 
