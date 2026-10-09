@@ -3072,10 +3072,17 @@ async function performLookup() {
 async function changeLogin() {
   const payload = { currentUsername: document.getElementById('curUser').value, currentPassword: document.getElementById('curPass').value, newUsername: document.getElementById('newUser').value, newPassword: document.getElementById('newPass').value };
   const msg = document.getElementById('changeLoginMsg');
+  msg.style.display='block';
   try {
-    const data = await apiFetch('/api/manager/change-credentials', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-    msg.style.display='block'; msg.style.background='#D1FAE5'; msg.style.color='#065F46'; msg.textContent = data.message||'Updated successfully';
-  } catch(e) { msg.style.display='block'; msg.style.background='#FEE2E2'; msg.style.color='#991B1B'; msg.textContent = 'Update disabled. Edit .env file directly.'; }
+    const res = await fetch('/api/manager/change-credentials', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    const data = await res.json().catch(()=>({}));
+    if (res.ok && data.success) {
+      msg.style.background='#D1FAE5'; msg.style.color='#065F46'; msg.textContent = data.message||'Updated successfully';
+      ['curUser','curPass','newUser','newPass'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+    } else {
+      msg.style.background='#FEE2E2'; msg.style.color='#991B1B'; msg.textContent = data.message || ('Update failed (HTTP '+res.status+')');
+    }
+  } catch(e) { msg.style.background='#FEE2E2'; msg.style.color='#991B1B'; msg.textContent = 'Could not reach server. Try again.'; }
 }
 
 // ─────────────────────────────── WIRE-UP ─────────────────────────────
