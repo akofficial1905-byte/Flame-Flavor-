@@ -257,6 +257,41 @@ let printQueue = [];
 
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
+// ─── MENU (stored in MongoDB so edits survive Render restarts/deploys) ───────
+const menuSchema = new mongoose.Schema({
+  key: { type: String, unique: true, default: "main" },
+  data: mongoose.Schema.Types.Mixed,
+  updatedAt: { type: Date, default: Date.now }
+});
+const MenuDoc = mongoose.model("MenuDoc", menuSchema);
+
+app.get("/menu.json", async (req, res) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+  try {
+    const rec = await MenuDoc.findOne({ key: "main" }).lean();
+    if (rec && rec.data) return res.json(rec.data);
+  } catch (e) { console.error("menu read error:", e.message); }
+  // First run / DB unavailable: fall back to the menu.json shipped with the code
+  res.sendFile(path.join(__dirname, "public/menu.json"));
+});
+
+app.post("/update-menu", async (req, res) => {
+  try {
+    const body = req.body;
+    if (!body || typeof body !== "object" || Array.isArray(body))
+      return res.status(400).json({ error: "Invalid menu" });
+    await MenuDoc.findOneAndUpdate(
+      { key: "main" },
+      { key: "main", data: body, updatedAt: new Date() },
+      { upsert: true }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error("menu save error:", err.message);
+    res.status(500).json({ error: "Failed to save menu" });
+  }
+});
+
 app.use(express.static(path.join(__dirname, "public")));
 
 // ─── MANAGER LOGIN ────────────────────────────────────────────────────────────
@@ -325,23 +360,6 @@ app.post("/api/manager/change-credentials", async (req, res) => {
     console.error("change-credentials error:", e.message);
     return res.status(500).json({ success: false, message: "Server error" });
   }
-});
-
-// ─── MENU ─────────────────────────────────────────────────────────────────────
-app.get("/menu.json", (req, res) =>
-  res.sendFile(path.join(__dirname, "public/menu.json"))
-);
-
-app.post("/update-menu", (req, res) => {
-  fs.writeFile(
-    path.join(__dirname, "public", "menu.json"),
-    JSON.stringify(req.body, null, 2),
-    "utf8",
-    (err) => {
-      if (err) return res.status(500).json({ error: "Failed to save menu" });
-      res.json({ success: true });
-    }
-  );
 });
 
 // ─── ORDERS ───────────────────────────────────────────────────────────────────
