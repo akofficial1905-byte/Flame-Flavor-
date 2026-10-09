@@ -1,4 +1,4 @@
-// server.js – Abba SEENUUU... FAST FOODS
+// server.js – Flame And Flavor
 
 const express  = require("express");
 const http     = require("http");
@@ -7,6 +7,7 @@ const cors     = require("cors");
 const path     = require("path");
 const mongoose = require("mongoose");
 const fs       = require("fs");
+const crypto   = require("crypto");
 
 require("dotenv").config();
 
@@ -259,21 +260,72 @@ app.use(express.json({ limit: "2mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
 // ─── MANAGER LOGIN ────────────────────────────────────────────────────────────
-app.post("/api/manager/login", (req, res) => {
-  const { username, password } = req.body || {};
-  if (!username || !password)
-    return res.status(400).json({ success: false, message: "Missing credentials" });
-  if (username === managerUser && password === managerPass)
-    return res.json({ success: true });
-  return res.status(401).json({ success: false, message: "Invalid credentials" });
+// ── Manager credentials (stored hashed in MongoDB; env vars are the fallback) ──
+const managerAuthSchema = new mongoose.Schema({
+  key: { type: String, unique: true, default: "main" },
+  username: String,
+  salt: String,
+  hash: String,
+  updatedAt: { type: Date, default: Date.now }
+});
+const ManagerAuth = mongoose.model("ManagerAuth", managerAuthSchema);
+
+function scryptHash(password, salt) {
+  return new Promise((resolve, reject) =>
+    crypto.scrypt(String(password), salt, 64, (err, key) => err ? reject(err) : resolve(key.toString("hex")))
+  );
+}
+function safeEq(a, b) {
+  const x = Buffer.from(String(a)), y = Buffer.from(String(b));
+  return x.length === y.length && crypto.timingSafeEqual(x, y);
+}
+async function verifyManagerCredentials(username, password) {
+  const rec = await ManagerAuth.findOne({ key: "main" }).lean();
+  if (rec && rec.hash) {
+    const h = await scryptHash(password, rec.salt);
+    return safeEq(username, rec.username) && safeEq(h, rec.hash);
+  }
+  return safeEq(username, managerUser) && safeEq(password, managerPass);
+}
+
+app.post("/api/manager/login", async (req, res) => {
+  try {
+    const { username, password } = req.body || {};
+    if (!username || !password)
+      return res.status(400).json({ success: false, message: "Missing credentials" });
+    if (await verifyManagerCredentials(username, password))
+      return res.json({ success: true });
+    return res.status(401).json({ success: false, message: "Invalid credentials" });
+  } catch (e) {
+    console.error("login error:", e.message);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
 });
 
-app.post("/api/manager/change-credentials", (_req, res) =>
-  res.status(400).json({
-    success: false,
-    message: "Disabled. Update MANAGER_USER and MANAGER_PASS in .env file."
-  })
-);
+app.post("/api/manager/change-credentials", async (req, res) => {
+  try {
+    const { currentUsername, currentPassword, newUsername, newPassword } = req.body || {};
+    if (!currentUsername || !currentPassword)
+      return res.status(400).json({ success: false, message: "Enter your current username and password" });
+    if (!(await verifyManagerCredentials(currentUsername, currentPassword)))
+      return res.status(401).json({ success: false, message: "Current username or password is incorrect" });
+    const nu = String(newUsername || "").trim();
+    const np = String(newPassword || "");
+    if (!nu) return res.status(400).json({ success: false, message: "New username cannot be empty" });
+    if (np.length < 6) return res.status(400).json({ success: false, message: "New password must be at least 6 characters" });
+    const salt = crypto.randomBytes(16).toString("hex");
+    const hash = await scryptHash(np, salt);
+    await ManagerAuth.findOneAndUpdate(
+      { key: "main" },
+      { key: "main", username: nu, salt, hash, updatedAt: new Date() },
+      { upsert: true, new: true }
+    );
+    return res.json({ success: true, message: "Login updated. Use the new username and password from now on (manager and delivery portals)." });
+  } catch (e) {
+    console.error("change-credentials error:", e.message);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
 
 // ─── MENU ─────────────────────────────────────────────────────────────────────
 app.get("/menu.json", (req, res) =>
@@ -1239,5 +1291,5 @@ app.get("/health", (_req, res) => res.status(200).send("OK"));
 
 server.listen(PORT, () => {
   console.log(`🚀 Server on http://localhost:${PORT}`);
-  console.log(`👤 Manager: ${managerUser}`);
+  console.log("👤 Manager login: database record if set, else MANAGER_USER env");
 });
